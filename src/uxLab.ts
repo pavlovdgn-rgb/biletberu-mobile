@@ -23,7 +23,7 @@ function linkFromUrl():Link|null{
   if(study&&token&&api){
     try{
       const parsed=new URL(api);
-      if(!/^[a-zA-Z0-9_.:-]{1,120}$/.test(study)||!/^[a-f0-9]{64}$/.test(token)||parsed.protocol!=='https:'||parsed.hostname!=='dashboard-alex-p2.vercel.app')return null;
+      if(!/^[a-zA-Z0-9_.:-]{1,120}$/.test(study)||!/^[a-f0-9]{64}$/.test(token)||parsed.protocol!=='https:'||parsed.hostname!=='dashboard-woad-one-64.vercel.app')return null;
       const link={study,token,api:parsed.origin};
       sessionStorage.setItem(LINK_KEY,JSON.stringify(link));
       history.replaceState(history.state,'',location.pathname+location.search);
