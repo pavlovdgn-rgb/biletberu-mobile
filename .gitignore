@@ -24,3 +24,4 @@ storybook-static
 .env
 *.local
 !/deploy.sh
+!/vercel.json
