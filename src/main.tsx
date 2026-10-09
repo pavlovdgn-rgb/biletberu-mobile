@@ -15,6 +15,7 @@ import './data/persons-more'; // персоны спектаклей, конце
 import { Device } from './screens/_shell/Device';
 import { BASENAME, NATIVE } from './components/_lib/native';
 import { installDragScroll } from './screens/_shell/dragScroll';
+import { installMobileStudyCollector } from './uxLab';
 import { MODAL_PATHS, ModalLayer, RouteFade, Toaster, type ModalState } from './screens/_shell/app';
 
 const routes = screens.flatMap((s) => [{ path: s.route, el: <s.component /> }, ...(s.states ?? []).map((st) => ({ path: st.route, el: <st.component /> }))]);
@@ -54,6 +55,7 @@ function AppFrame() {
 }
 
 installDragScroll();
+installMobileStudyCollector();
 
 // Опубликованная версия (Vercel, GitHub Pages) — только приложение без корпуса: любой адрес вне /app/… ведёт в /app/… (главная — /app/main).
 // Индекс экранов и корпус iPhone остаются в локальной разработке (npm run dev).
