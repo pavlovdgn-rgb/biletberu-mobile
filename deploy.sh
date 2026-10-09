@@ -5,6 +5,8 @@ set -e
 BASE_PATH=/biletberu-mobile/ npm run build
 cp dist/index.html dist/404.html   # прямые ссылки (/app/main, /app/event?id=…) открывают приложение
 touch dist/.nojekyll
+# ветка gh-pages — готовый сайт, Vercel её не собирает (основная сборка Vercel — из main)
+echo '{ "git": { "deploymentEnabled": false } }' > dist/vercel.json
 cd dist
 rm -rf .git
 git init -q -b gh-pages
