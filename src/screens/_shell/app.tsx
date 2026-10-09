@@ -7,10 +7,13 @@ import { useStore } from '../../data/store';
 export function NavBar({ active }: { active: number }) {
   const nav = useNavigate();
   const { state } = useStore();
+  const { pathname } = useLocation();
   const go = (i: number) => {
-    if (i === active) return;
+    const root = [`/main`, state.tickets.length ? '/plan' : '/no-ticket', '/favourites', '/tickets'][i];
+    // активная вкладка: уже в корне раздела — ничего; на вложенном экране (билет, мероприятие) — в корень, как в iOS
+    if (i === active && pathname === root) return;
     // вкладки таббара переключаются мгновенно, как в iOS — без анимации появления экрана (иначе экран вместе с таббаром «прыгает»)
-    nav([`/main`, state.tickets.length ? '/plan' : '/no-ticket', '/favourites', '/tickets'][i], { state: { tab: true } });
+    nav(root, { state: { tab: true } });
   };
   return <Bar active={active} onChange={go} />;
 }
