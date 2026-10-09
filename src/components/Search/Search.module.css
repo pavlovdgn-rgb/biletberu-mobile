@@ -1,0 +1,9 @@
+.root { display: flex; align-items: center; gap: var(--spacing-lg); width: 100%; height: 40px;
+  padding: var(--spacing-lg) var(--spacing-xl); border-radius: var(--radius-lg); background: var(--color-background-base);
+  color: var(--color-text-secondary); transition: box-shadow var(--motion-duration) var(--motion-ease), background-color var(--motion-duration) var(--motion-ease); }
+.root:focus-within { box-shadow: inset 0 0 0 1px var(--color-primary-orange); }
+.input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; padding: 0; color: var(--color-text-primary); }
+.input::placeholder { color: var(--color-text-secondary); }
+.Disabled { background: var(--color-background-disabled); color: var(--color-text-disabled); }
+.Disabled .input::placeholder { color: var(--color-text-disabled); }
+.clear { border: 0; background: transparent; padding: 0; display: inline-flex; color: var(--color-text-secondary); cursor: pointer; }

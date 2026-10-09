@@ -1,0 +1,9 @@
+.root { display: inline-flex; align-items: center; justify-content: center; gap: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-2xl); border-radius: var(--radius-lg); border: 1px solid transparent;
+  background: var(--color-background-base); color: var(--color-text-primary); cursor: pointer; white-space: nowrap;
+  transition: background-color var(--motion-duration) var(--motion-ease), color var(--motion-duration) var(--motion-ease); }
+.root:focus-visible { outline: 2px solid var(--color-primary-orange); outline-offset: 2px; }
+.root:hover { background: var(--color-background-disabled); }
+.active, .active:hover { background: var(--color-text-primary); color: var(--color-background-base); }
+.legend { background: transparent; border-color: var(--color-background-disabled); padding: var(--spacing-md); gap: var(--spacing-md); }
+.dot { width: 14px; height: 14px; border-radius: var(--radius-pill); flex-shrink: 0; }

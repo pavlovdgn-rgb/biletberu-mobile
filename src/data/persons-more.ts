@@ -1,0 +1,43 @@
+import { PERSONS, type Person } from './people';
+
+/** Ещё персоны (придуманы, портреты сгенерированы): только у тех жанров, где на сцене конкретные люди —
+ *  спектакли, балет, опера, концерты, лекции, стендап. У музеев, выставок, экскурсий, мастер-классов, ярмарок и планетария персон нет. */
+const MORE: Person[] = [
+  { id: 'vetrov', name: 'Алексей Ветров', role: 'Актёр', image: 'person-vetrov', avatar: 'person-vetrov', events: ['master', 'twelfth-night', 'queen-spades', 'chicago'],
+    bio: 'Актёр драматического театра, выпускник РГИСИ. Играет и в классике, и в современных постановках.\nЗрители знают его по роли Воланда — сдержанного, ироничного и очень опасного.' },
+  { id: 'samoylova', name: 'Ольга Самойлова', role: 'Актриса', image: 'person-samoylova', avatar: 'person-samoylova', events: ['master', 'twelfth-night', 'queen-spades', 'chicago', 'nutcracker-kids'],
+    bio: 'Актриса театра и кино. Любит роли с характером: от Маргариты до Виолы в «Двенадцатой ночи».\nВедёт актёрскую студию для подростков.' },
+  { id: 'lavrov', name: 'Михаил Лавров', role: 'Режиссёр', image: 'person-lavrov', avatar: 'person-lavrov', events: ['master', 'twelfth-night', 'queen-spades'],
+    bio: 'Режиссёр, ставит в Петербурге больше двадцати лет. Его спектакли — про классику, рассказанную сегодняшним языком.\nЛауреат «Золотого софита».' },
+  { id: 'belova', name: 'Анна Белова', role: 'Прима-балерина', image: 'person-belova', avatar: 'person-belova', events: ['ballet-minis', 'giselle', 'swan-lake', 'ballet', 'nutcracker-kids'],
+    bio: 'Прима-балерина, выпускница Академии Русского балета им. Вагановой. Жизель, Одетта-Одиллия, Маша в «Щелкунчике».\nВ «Вечере балетных миниатюр» впервые выступает и как хореограф.' },
+  { id: 'korneev', name: 'Даниил Корнеев', role: 'Солист балета', image: 'person-korneev', avatar: 'person-korneev', events: ['ballet-minis', 'giselle', 'swan-lake', 'ballet'],
+    bio: 'Ведущий солист балетной труппы. Граф Альберт в «Жизели» и принц Зигфрид в «Лебедином озере».\nСтавит современные миниатюры для молодых танцовщиков.' },
+  { id: 'shuvalova', name: 'Елена Шувалова', role: 'Сопрано', image: 'person-shuvalova', avatar: 'person-shuvalova', events: ['carmen', 'onegin', 'romances', 'silence'],
+    bio: 'Оперная певица, лирико-драматическое сопрано. Татьяна в «Онегине», Микаэла в «Кармен».\nВ камерных программах поёт романсы Чайковского и Рахманинова.' },
+  { id: 'orlov', name: 'Сергей Орлов', role: 'Баритон', image: 'person-orlov', avatar: 'person-orlov', events: ['carmen', 'onegin', 'romances'],
+    bio: 'Баритон, солист оперной труппы. Эскамильо в «Кармен» и Онегин — его коронные партии.\nЗрители любят его за актёрскую игру не меньше, чем за голос.' },
+  { id: 'rostov', name: 'Виктор Ростов', role: 'Дирижёр', image: 'person-rostov', avatar: 'person-rostov', events: ['rachmaninov', 'choir', 'carmen', 'onegin', 'chamber'],
+    bio: 'Главный дирижёр симфонического оркестра. Ценит русскую музыку XIX–XX веков, особенно Рахманинова и Чайковского.\nПеред концертами рассказывает публике о программе.' },
+  { id: 'klimova', name: 'Мария Климова', role: 'Пианистка', image: 'person-klimova', avatar: 'person-klimova', events: ['rachmaninov', 'chamber', 'silence', 'organ-candles'],
+    bio: 'Пианистка, лауреат международных конкурсов. Исполняет Второй концерт Рахманинова и камерную музыку.\nПреподаёт в консерватории.' },
+  { id: 'sever', name: 'Артём Север', role: 'Певец', image: 'person-sever', avatar: 'person-sever', events: ['breath', 'unity', 'light-fest'],
+    bio: 'Певец и автор песен. Мелодичная поп-музыка с живым бэндом, на концертах — новые песни раньше, чем на стримингах.' },
+  { id: 'melik', name: 'Тимур Меликов', role: 'Саксофонист', image: 'person-melik', avatar: 'person-melik', events: ['jazz', 'jazz-water', 'ambient'],
+    bio: 'Джазовый саксофонист, лидер квартета. Играет стандарты и собственные композиции, любит импровизировать вместе с залом.' },
+  { id: 'gromov', name: 'Игорь Громов', role: 'Гитарист', image: 'person-gromov', avatar: 'person-gromov', events: ['rock-holland', 'unity'],
+    bio: 'Гитарист и вокалист петербургской рок-группы. Двадцать лет на сцене, хиты 2000-х и новый альбом.' },
+  { id: 'lumina', name: 'DJ Lumina', role: 'Диджей и продюсер', image: 'person-lumina', avatar: 'person-lumina', events: ['planetarium-techno', 'ambient'],
+    bio: 'Диджей и продюсер электронной музыки. Собирает сеты под визуальные шоу: проекции на куполе, свет и звук в одном ритме.' },
+  { id: 'andreev', name: 'Павел Андреев', role: 'Архитектурный историк', image: 'person-andreev', avatar: 'person-andreev', events: ['nevsky', 'art-lecture'],
+    bio: 'Историк архитектуры, автор путеводителя по Невскому проспекту. Рассказывает о городе через дома и людей, которые в них жили.' },
+  { id: 'tikhonova', name: 'Вера Тихонова', role: 'Искусствовед', image: 'person-tikhonova', avatar: 'person-tikhonova', events: ['art-lecture', 'cinema'],
+    bio: 'Искусствовед и куратор выставок современного искусства. Объясняет сложные вещи простыми словами — без «художник хотел сказать».' },
+  { id: 'zvezdin', name: 'Глеб Звездин', role: 'Астроном', image: 'person-zvezdin', avatar: 'person-zvezdin', events: ['stars-roof'],
+    bio: 'Астроном и популяризатор науки. Проводит наблюдения звёздного неба на крышах Петербурга и рассказывает о космосе с юмором.' },
+  { id: 'shumov', name: 'Денис Шумов', role: 'Стендап-комик', image: 'person-shumov', avatar: 'person-shumov', events: ['standup', 'dark-humor', 'pop-quiz'],
+    bio: 'Стендап-комик, резидент петербургских клубов. Шутит о жизни в большом городе, отношениях и работе.' },
+  { id: 'gastrova', name: 'Наталья Гастрова', role: 'Шеф и гастрокритик', image: 'person-gastrova', avatar: 'person-gastrova', events: ['food-lecture'],
+    bio: 'Шеф-повар и гастрокритик. На лекциях-дегустациях рассказывает, как петербургская кухня связана с историей города.' },
+];
+for (const p of MORE) if (!PERSONS.some((x) => x.id === p.id)) PERSONS.push(p);

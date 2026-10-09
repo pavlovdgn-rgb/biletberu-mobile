@@ -1,0 +1,3 @@
+/* Шапка-карточка: статус-бар и Title_page берут цвет поверхности (`--color-base-white`), а не фона шапки —
+   в тёмной теме статус-бар совпадает с карточкой под ним (как в Figma на экранах покупки). */
+.bb-surface-head { --color-background-header: var(--color-base-white); }

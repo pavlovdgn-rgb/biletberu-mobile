@@ -1,0 +1,17 @@
+.root { display: flex; align-items: center; gap: var(--spacing-xl); width: 100%; padding: var(--spacing-lg);
+  border-radius: var(--radius-md); background: var(--color-background-base); color: var(--color-text-primary);
+  transition: box-shadow var(--motion-duration) var(--motion-ease); }
+.root:hover { box-shadow: var(--shadow-sm); }
+.noPhoto { padding: var(--spacing-md); }
+.drag { padding-left: var(--spacing-xs); }
+.lead { display: flex; align-items: center; gap: var(--spacing-xs); }
+.handle { color: var(--color-text-disabled); cursor: grab; }
+.photo { position: relative; }
+.badgeHeart { position: absolute; top: var(--spacing-xs); left: var(--spacing-xs); color: var(--color-primary-orange); }
+.info { flex: 1; display: flex; flex-direction: column; gap: var(--spacing-sm); min-width: 0; }
+.name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.secondary { color: var(--color-text-secondary); }
+.metaRow { display: flex; align-items: center; gap: var(--spacing-xl); color: var(--color-text-secondary); }
+.meta { display: inline-flex; align-items: center; gap: var(--spacing-xs); }
+.oneLine { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.noPhoto .info { gap: var(--spacing-xs); }

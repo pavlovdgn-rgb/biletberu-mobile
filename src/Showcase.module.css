@@ -1,0 +1,16 @@
+.page { max-width: 1200px; margin: 0 auto; padding: var(--spacing-5xl) var(--spacing-2xl); display: flex; flex-direction: column; gap: var(--spacing-5xl); }
+.section { display: flex; flex-direction: column; gap: var(--spacing-2xl); }
+.h { margin: 0; }
+.muted { color: var(--color-text-secondary); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--spacing-xl); }
+.swatch { display: flex; flex-direction: column; gap: var(--spacing-xs); padding: var(--spacing-md); border-radius: var(--radius-md); background: var(--color-base-white); }
+.chip { height: 56px; border-radius: var(--radius-sm); border: 1px solid var(--color-background-disabled);
+  background-image: linear-gradient(45deg, var(--color-background-disabled) 25%, transparent 25%, transparent 75%, var(--color-background-disabled) 75%),
+    linear-gradient(45deg, var(--color-background-disabled) 25%, transparent 25%, transparent 75%, var(--color-background-disabled) 75%);
+  background-size: 12px 12px; background-position: 0 0, 6px 6px; position: relative; overflow: hidden; }
+.chip > span { position: absolute; inset: 0; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xl); }
+.panel { display: flex; flex-direction: column; gap: var(--spacing-xl); padding: var(--spacing-2xl); border-radius: var(--radius-2xl); background: var(--color-base-white); }
+.phone { width: 393px; background: var(--color-background-base); border-radius: var(--radius-2xl); overflow: hidden; box-shadow: var(--shadow-md); }
+.dark { background: var(--color-text-secondary); padding: var(--spacing-2xl); border-radius: var(--radius-md); }
+.label { color: var(--color-text-secondary); }

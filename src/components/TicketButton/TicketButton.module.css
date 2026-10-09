@@ -1,0 +1,12 @@
+.root { display: flex; align-items: center; gap: var(--spacing-xs); width: 139px; min-height: 58px; text-align: left;
+  padding: var(--spacing-xs) var(--spacing-md) var(--spacing-xs) var(--spacing-lg);
+  border-radius: var(--radius-sm); border: 1px solid transparent; border-left: 3px solid var(--category, var(--illustration-seat-4)); background: var(--color-background-base); cursor: pointer;
+  transition: border-color var(--motion-duration) var(--motion-ease), background-color var(--motion-duration) var(--motion-ease); }
+.root:hover { background: var(--color-background-secondary); }
+.root:focus-visible { outline: 2px solid var(--color-primary-orange); outline-offset: 2px; }
+.selected { border-color: var(--color-primary-orange); }
+.text { display: flex; flex-direction: column; gap: var(--spacing-2xs); flex: 1; min-width: 0; }
+.title { color: var(--color-text-primary); }
+.sub { color: var(--color-text-secondary); }
+.price { color: var(--color-text-primary); }
+.close { color: var(--color-text-secondary); }

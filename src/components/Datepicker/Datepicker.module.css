@@ -1,0 +1,5 @@
+.root { display: flex; flex-direction: column; gap: var(--spacing-xl); width: 100%; }
+.month { color: var(--color-text-secondary); }
+.row { display: flex; gap: var(--spacing-xs); overflow-x: auto; scrollbar-width: none; }
+.row::-webkit-scrollbar { display: none; }
+.tickets { padding-bottom: var(--spacing-2xl); }

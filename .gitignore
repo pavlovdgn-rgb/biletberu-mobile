@@ -1,0 +1,26 @@
+# Репозиторий biletberu-mobile — только код приложения.
+# Аналитика, исследования, директивы агента, скриншоты и .env остаются локально.
+/*
+!/.gitignore
+!/.github/
+!/.storybook/
+!/src/
+!/public/
+!/index.html
+!/package.json
+!/package-lock.json
+!/tsconfig.json
+!/tsconfig.app.json
+!/tsconfig.node.json
+!/vite.config.ts
+!/vitest.shims.d.ts
+!/.oxlintrc.json
+
+.DS_Store
+node_modules
+dist
+storybook-static
+*.log
+.env
+*.local
+!/deploy.sh

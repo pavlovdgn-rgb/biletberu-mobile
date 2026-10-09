@@ -1,0 +1,18 @@
+.root { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-lg);
+  padding: 0; cursor: pointer; color: var(--color-text-primary); flex-shrink: 0;
+  transition: background-color var(--motion-duration) var(--motion-ease), transform var(--motion-duration) var(--motion-ease), color var(--motion-duration) var(--motion-ease); }
+.root:focus-visible { outline: 2px solid var(--color-primary-orange); outline-offset: 2px; }
+.root:not(:disabled):active { transform: scale(0.94); }
+.L { width: 36px; height: 36px; }
+.M { width: 32px; height: 32px; border-radius: var(--radius-pill); }
+.Color { background: var(--color-background-secondary); }
+.Color:not(:disabled):hover { background: var(--color-background-disabled); }
+.Color.M { background: var(--color-background-disabled); }
+.Color.Disabled { background: var(--color-background-disabled); }
+.Color.Active { background: var(--color-background-disabled); color: var(--color-primary-orange); }
+.Color.accent { background: var(--color-primary-orange-10); color: var(--color-primary-orange); }
+.transparent { background: var(--color-base-white); }
+.transparent.Active { color: var(--color-primary-orange); }
+.Disabled { color: var(--color-text-disabled); cursor: not-allowed; }
+.White { background: var(--color-base-white); box-shadow: var(--shadow-sm); }
+.White:not(:disabled):hover { background: var(--color-background-base); }

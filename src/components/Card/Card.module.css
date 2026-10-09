@@ -1,0 +1,31 @@
+.root { display: flex; background: var(--color-background-base); border-radius: var(--radius-md); overflow: hidden; color: var(--color-text-primary);
+  transition: box-shadow var(--motion-duration) var(--motion-ease), transform var(--motion-duration) var(--motion-ease); cursor: pointer; }
+.root:hover { box-shadow: var(--shadow-md); }
+.shadow { box-shadow: var(--shadow-sm); }
+.Vertical { flex-shrink: 0; flex-direction: column; gap: var(--spacing-lg); width: 263px; padding-bottom: var(--spacing-2xl); }
+.Horizontal { flex-direction: row; align-items: stretch; width: 100%; min-height: 139px; }
+.hMedia { position: relative; flex: 0 0 112px; min-height: 139px; }
+/* фото заполняет высоту карточки и не задаёт её: вертикальные снимки не растягивают карточку */
+.hImg { position: absolute !important; inset: 0; width: 100% !important; height: 100% !important; }
+.media { position: relative; }
+.rateBL { position: absolute; bottom: var(--spacing-xl); left: var(--spacing-xl); }
+.vAge { position: absolute; top: var(--spacing-xl); left: var(--spacing-xl); }
+.vImg { border-radius: var(--radius-md) !important; }
+.ageTL { position: absolute; top: var(--spacing-lg); left: var(--spacing-lg); }
+.like { position: absolute; top: var(--spacing-lg); right: 14px; border: 0; background: transparent; padding: 0; cursor: pointer;
+  color: var(--color-static-white); display: inline-flex; transition: transform var(--motion-duration) var(--motion-ease); }
+.like:active { transform: scale(0.85); }
+.liked { color: var(--color-primary-orange); }
+.details { display: flex; flex-direction: column; gap: var(--spacing-xs); padding: 0 var(--spacing-xl); }
+.desc { display: flex; flex-direction: column; gap: var(--spacing-md); padding-bottom: var(--spacing-xs); }
+.title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.meta { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.secondary { color: var(--color-text-secondary); }
+.priceRow { display: flex; align-items: center; gap: var(--spacing-2xl); }
+.info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 0; padding: var(--spacing-lg); min-width: 0; }
+.hTop { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.hRate { position: absolute; bottom: var(--spacing-lg); left: var(--spacing-lg); }
+.hPrice { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-xl); }
+.hPriceL { display: flex; align-items: center; gap: var(--spacing-xl); }
+.heart { border: 0; background: transparent; padding: 0; cursor: pointer; color: var(--color-text-secondary); display: inline-flex; }
+.heart.liked { color: var(--color-text-secondary); }

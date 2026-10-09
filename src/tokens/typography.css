@@ -1,0 +1,19 @@
+/*
+ * Text styles 1:1 с Figma (14 стилей). Цвет в класс не входит — задаётся семантикой отдельно.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&display=swap');
+
+.ds-display-l   { font-family: var(--typography-font-family); font-weight: var(--typography-weight-semibold); font-size: var(--typography-display-l-size); line-height: var(--typography-display-l-line-height); }
+.ds-display     { font-family: var(--typography-font-family); font-weight: var(--typography-weight-semibold); font-size: var(--typography-display-size); line-height: var(--typography-display-line-height); }
+.ds-lead        { font-family: var(--typography-font-family); font-weight: var(--typography-weight-regular); font-size: var(--typography-lead-size); line-height: var(--typography-lead-line-height); }
+.ds-heading-h1  { font-family: var(--typography-font-family); font-weight: var(--typography-weight-semibold); font-size: var(--typography-heading-1-size); line-height: var(--typography-heading-1-line-height); }
+.ds-heading-h2  { font-family: var(--typography-font-family); font-weight: var(--typography-weight-semibold); font-size: var(--typography-heading-2-size); line-height: var(--typography-heading-2-line-height); }
+.ds-heading-h3  { font-family: var(--typography-font-family); font-weight: var(--typography-weight-semibold); font-size: var(--typography-heading-3-size); line-height: var(--typography-heading-3-line-height); }
+.ds-subtitle    { font-family: var(--typography-font-family); font-weight: var(--typography-weight-medium); font-size: var(--typography-subtitle-size); line-height: var(--typography-subtitle-line-height); }
+.ds-price       { font-family: var(--typography-font-family); font-weight: var(--typography-weight-semibold); font-size: var(--typography-price-size); line-height: var(--typography-price-line-height); }
+.ds-body        { font-family: var(--typography-font-family); font-weight: var(--typography-weight-regular); font-size: var(--typography-body-size); line-height: var(--typography-body-line-height); }
+.ds-note        { font-family: var(--typography-font-family); font-weight: var(--typography-weight-medium); font-size: var(--typography-note-size); line-height: var(--typography-note-line-height); }
+.ds-small       { font-family: var(--typography-font-family); font-weight: var(--typography-weight-medium); font-size: var(--typography-small-size); line-height: var(--typography-small-line-height); }
+.ds-caption     { font-family: var(--typography-font-family); font-weight: var(--typography-weight-regular); font-size: var(--typography-caption-size); line-height: var(--typography-caption-line-height); }
+.ds-tiny        { font-family: var(--typography-font-family); font-weight: var(--typography-weight-medium); font-size: var(--typography-tiny-size); line-height: var(--typography-tiny-line-height); }
+.ds-tiny-regular{ font-family: var(--typography-font-family); font-weight: var(--typography-weight-regular); font-size: var(--typography-tiny-size); line-height: var(--typography-tiny-line-height); }

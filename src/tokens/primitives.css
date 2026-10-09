@@ -1,0 +1,143 @@
+/*
+ * Primitive-слой. В Figma (`ds/foundation.md`) примитивов нет — коллекция Color плоская.
+ * Здесь сырые значения вынесены в палитру, чтобы семантика ссылалась на примитивы через var().
+ * Значения 1:1 из Variables файла LzofKkoGvr7jqLs3kMhbPk (выгрузка 2026-10-05).
+ */
+:root {
+  /* Палитра */
+  --palette-orange-500: #fd4f05;
+  --palette-orange-500-a90: rgb(253 79 5 / 0.9);
+  --palette-orange-500-a10: rgb(253 79 5 / 0.1);
+  --palette-gray-950: #111010;
+  --palette-gray-600: #6f6e6e;
+  --palette-gray-400: #a1a1a1;
+  --palette-gray-200: #d9d9d9;
+  --palette-gray-150: #ececec;
+  --palette-gray-100: #eeeeee;
+  --palette-gray-75-a80: rgb(239 239 239 / 0.8);
+  --palette-gray-50: #f5f5f5;
+  --palette-white: #ffffff;
+  --palette-red-600: #d5292c;
+  --palette-red-600-a95: rgb(213 41 44 / 0.95);
+  --palette-red-500-a10: rgb(255 30 34 / 0.1);
+  --palette-yellow-400: #f2d600;
+  --palette-green-500: #00d011;
+  --palette-violet-600: #5218f0;
+  --palette-black-a10: rgb(0 0 0 / 0.1);
+  --palette-black-a16: rgb(0 0 0 / 0.16);
+
+  /* Тёмная тема (режим Dark коллекции Color, 2026-10-08) */
+  --palette-dark-950: #0d0d0e;
+  --palette-dark-900: #1c1c1e;
+  --palette-dark-850: #2a2a2d;
+  --palette-dark-800: #2c2c2f;
+  --palette-dark-750: #3a3a3d;
+  --palette-dark-600: #5e5e63;
+  --palette-dark-500: #6a6a70;
+  --palette-dark-400: #a2a2a8;
+  --palette-dark-50: #f2f2f3;
+  --palette-dark-900-a80: rgb(28 28 30 / 0.8);
+  --palette-orange-500-a18: rgb(253 79 5 / 0.18);
+  --palette-red-dark: #ff453a;
+  --palette-red-dark-a95: rgb(255 69 58 / 0.95);
+  --palette-red-dark-a16: rgb(255 69 58 / 0.16);
+  --palette-yellow-dark: #ffd60a;
+  --palette-green-dark: #30d158;
+  --palette-violet-dark: #7d5cff;
+  --palette-blue-50: #f1f5fe;
+  --palette-blue-dark: #1b2638;
+  --palette-gray-950-a20: rgb(17 16 16 / 0.2);
+  --palette-gray-950-a80: rgb(17 16 16 / 0.8);
+
+  /* Иллюстрации (карта, схема зала, метро). В ДС не токенизируются — сырые цвета из макетов */
+  --illustration-map-land: #f1f0e6;
+  --illustration-map-block: #ddd9c7;
+  --illustration-map-park: #daecb7;
+  --illustration-map-water: #90d6f9;
+  --illustration-map-road: #ffffff;
+  --illustration-metro-line: #a144b3;
+  --illustration-map-water-label: #2f7fb0;
+  --illustration-map-route: #ff5a00;
+  --illustration-map-mark: #9c59ff;
+  --illustration-map-mark-halo: #f8f5ff;
+  --illustration-success-check: #00a947;
+  /* Ценовые категории схемы зала (цвета мест на растровой схеме) */
+  --illustration-seat-1: #ff5757;
+  --illustration-seat-2: #ffda53;
+  --illustration-seat-3: #4cf088;
+  --illustration-seat-4: #9c59ff;
+  --illustration-seat-5: #ff5bce;
+
+  /* Radius (коллекция Radius) */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-lg: 12px;
+  --radius-md: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-pill: 48px;
+
+  /* Spacing (коллекция Spacing) */
+  --spacing-none: 0px;
+  --spacing-2xs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 6px;
+  --spacing-md: 8px;
+  --spacing-lg: 10px;
+  --spacing-xl: 12px;
+  --spacing-2xl: 16px;
+  --spacing-3xl: 20px;
+  --spacing-4xl: 24px;
+  --spacing-5xl: 32px;
+
+  /* Typography (коллекция Typography) */
+  --typography-font-family: 'Onest', system-ui, -apple-system, sans-serif;
+  --typography-weight-regular: 400;
+  --typography-weight-medium: 500;
+  --typography-weight-semibold: 600;
+  --typography-display-l-size: 40px;
+  --typography-display-l-line-height: 44px;
+  --typography-display-size: 32px;
+  --typography-display-line-height: 38px;
+  --typography-lead-size: 20px;
+  --typography-lead-line-height: 24px;
+  --typography-heading-1-size: 22px;
+  --typography-heading-1-line-height: 26px;
+  --typography-heading-2-size: 18px;
+  --typography-heading-2-line-height: 20px;
+  --typography-heading-3-size: 16px;
+  --typography-heading-3-line-height: 20px;
+  --typography-subtitle-size: 16px;
+  --typography-subtitle-line-height: 18px;
+  --typography-price-size: 14px;
+  --typography-price-line-height: 16px;
+  --typography-body-size: 14px;
+  --typography-body-line-height: 20px;
+  --typography-note-size: 14px;
+  --typography-note-line-height: 16px;
+  --typography-small-size: 12px;
+  --typography-small-line-height: 16px;
+  --typography-caption-size: 12px;
+  --typography-caption-line-height: 16px;
+  --typography-tiny-size: 10px;
+  --typography-tiny-line-height: 16px;
+
+  /* Opacity */
+  --opacity-disabled: 0.5;
+
+  /* Motion (код: переходы состояний) */
+  --motion-duration: 180ms;
+  --motion-ease: ease;
+}
+
+/* Демонстрационная обвязка (корпус iPhone вокруг приложения на компьютере) — не часть UI приложения */
+:root {
+  --device-stage-top: #2a2a2e;
+  --device-stage-bottom: #0b0b0d;
+  --device-titanium: #5b5a58;
+  --device-titanium-light: #8a8884;
+  --device-titanium-dark: #3a3937;
+  --device-bezel: #000000;
+  --device-edge: #1a1a1a;
+  --device-shadow: rgba(0, 0, 0, 0.6);
+}

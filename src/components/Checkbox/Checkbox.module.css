@@ -1,0 +1,5 @@
+.root { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; cursor: pointer; flex-shrink: 0;
+  border-radius: var(--radius-xs); border: 1.5px solid var(--color-text-disabled); background: transparent; color: var(--color-static-white);
+  transition: background-color var(--motion-duration) var(--motion-ease), border-color var(--motion-duration) var(--motion-ease); }
+.Yes { background: var(--color-primary-orange); border-color: var(--color-primary-orange); }
+.root:focus-visible { outline: 2px solid var(--color-primary-orange); outline-offset: 2px; }

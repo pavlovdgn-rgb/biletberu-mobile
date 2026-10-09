@@ -1,0 +1,8 @@
+.root { display: inline-block; border-radius: 50%; flex-shrink: 0; animation: spin 0.9s linear infinite;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring)), #000 calc(100% - var(--ring) + 1px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring)), #000 calc(100% - var(--ring) + 1px)); }
+.Brand { background: conic-gradient(from 0deg, transparent, var(--color-primary-orange)); }
+.Light { background: conic-gradient(from 0deg, transparent, var(--color-static-white)); }
+.Dark  { background: conic-gradient(from 0deg, transparent, var(--color-text-primary)); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .root { animation-duration: 3s; } }

@@ -1,0 +1,14 @@
+.root { display: flex; flex-direction: column; gap: var(--spacing-2xs); width: 100%; }
+.box { display: flex; flex-direction: column; justify-content: center; min-height: 54px; padding: 0 var(--spacing-2xl);
+  border-radius: var(--radius-lg); background: var(--color-background-base); border: 1px solid transparent; cursor: text;
+  transition: border-color var(--motion-duration) var(--motion-ease), background-color var(--motion-duration) var(--motion-ease); }
+.box:focus-within, .PressedFilled .box { border-color: var(--color-primary-orange); }
+.label { color: var(--color-text-secondary); transition: font-size var(--motion-duration) var(--motion-ease); }
+.hidden { height: 0; opacity: 0; }
+.input { transition: opacity var(--motion-duration) var(--motion-ease); }
+.input { border: 0; outline: 0; background: transparent; padding: 0; width: 100%; color: var(--color-text-primary); }
+.input::placeholder { color: var(--color-text-secondary); }
+.Error .box { background: var(--color-system-error-bg); }
+.Disabled .box { background: var(--color-background-disabled); cursor: not-allowed; }
+.Disabled .label, .Disabled .input, .Disabled .input::placeholder { color: var(--color-text-disabled); }
+.message { color: var(--color-system-error); padding: 0 var(--spacing-2xl); }

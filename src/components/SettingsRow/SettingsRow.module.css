@@ -1,0 +1,7 @@
+.root { display: flex; align-items: center; gap: var(--spacing-xl); width: 100%; padding: var(--spacing-xl) var(--spacing-2xl); color: var(--color-text-primary); text-align: left; }
+.button { border: 0; background: transparent; cursor: pointer; font: inherit; }
+.icon { flex-shrink: 0; color: var(--color-text-primary); }
+.label { flex: 1; min-width: 0; }
+.value { color: var(--color-text-secondary); white-space: nowrap; }
+.chevron { flex-shrink: 0; color: var(--color-text-secondary); }
+.danger, .danger .icon { color: var(--color-system-error); }

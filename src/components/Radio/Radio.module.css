@@ -1,0 +1,8 @@
+.root { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; cursor: pointer; flex-shrink: 0;
+  border-radius: var(--radius-md); border: 1.5px solid var(--color-text-disabled); background: var(--color-background-disabled);
+  transition: border-color var(--motion-duration) var(--motion-ease), background-color var(--motion-duration) var(--motion-ease); }
+.root::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--color-primary-orange); transform: scale(0);
+  transition: transform var(--motion-duration) var(--motion-ease); }
+.Active { background: var(--color-base-white); border-color: var(--color-primary-orange); }
+.Active::after { transform: scale(1); }
+.root:focus-visible { outline: 2px solid var(--color-primary-orange); outline-offset: 2px; }

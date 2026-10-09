@@ -1,0 +1,108 @@
+/*
+ * Semantic-слой: имена 1:1 с Variables коллекции Color (`color/primary/orange` → `--color-primary-orange`).
+ * Каждая семантика ссылается на примитив.
+ */
+:root {
+  --color-primary-orange: var(--palette-orange-500);
+  --color-primary-orange-90: var(--palette-orange-500-a90);
+  --color-primary-orange-10: var(--palette-orange-500-a10);
+
+  --color-text-primary: var(--palette-gray-950);
+  --color-text-secondary: var(--palette-gray-600);
+  --color-text-disabled: var(--palette-gray-400);
+
+  --color-background-base: var(--palette-gray-50);
+  --color-background-secondary: var(--palette-gray-100);
+  --color-background-disabled: var(--palette-gray-150);
+  --color-background-overlay: var(--palette-gray-75-a80);
+  --color-background-placeholder: var(--palette-gray-200);
+
+  --color-base-white: var(--palette-white);
+
+  --color-system-error: var(--palette-red-600);
+  --color-system-error-95: var(--palette-red-600-a95);
+  --color-system-error-bg: var(--palette-red-500-a10);
+  --color-system-warning: var(--palette-yellow-400);
+  --color-system-success: var(--palette-green-500);
+
+  --color-accent-violet: var(--palette-violet-600);
+  --color-accent-violet-10: color-mix(in srgb, var(--palette-violet-600) 10%, transparent);
+
+  /* Не меняются с темой: белое на цветном и на фото, тёмные подложки и затемнения (альфа — в токене) */
+  --color-static-white: var(--palette-white);
+  --color-static-black: var(--palette-gray-950);
+  --color-static-black-20: var(--palette-gray-950-a20);
+  --color-static-black-80: var(--palette-gray-950-a80);
+
+  --color-background-inverse: var(--palette-gray-950);
+  --color-background-info: var(--palette-blue-50);
+  --color-background-header: var(--palette-white);
+  --color-border-tertiary: var(--palette-gray-950);
+
+  /* Подписи на карте (color/map/label · label-strong · label-halo) */
+  --map-label: var(--palette-gray-600);
+  --map-label-strong: var(--palette-gray-950);
+  --map-label-halo: var(--palette-white);
+
+  /* Effect styles */
+  --shadow-sm: 0 0 6px 0 var(--palette-black-a10);
+  --shadow-md: 0 0 12px 0 var(--palette-black-a16);
+
+  /* Paint styles (angular 12% → 100%) */
+  --gradient-orange-fade: conic-gradient(from 0deg, var(--palette-orange-500-a10), var(--palette-orange-500));
+  --gradient-black-fade: conic-gradient(from 0deg, rgb(17 16 16 / 0.12), var(--palette-gray-950));
+}
+
+/*
+ * Тёмная тема — режим Dark коллекции Color (`ds/foundation.md`, «Тёмная тема»).
+ * Включается атрибутом `data-theme="dark"` на корне приложения (`src/screens/_shell/theme.ts`).
+ * Поверхности (`--color-base-white`) темнеют, `--color-static-*` остаются как есть.
+ */
+[data-theme='dark'] {
+  color-scheme: dark;
+  --color-primary-orange-10: var(--palette-orange-500-a18);
+
+  --color-text-primary: var(--palette-dark-50);
+  --color-text-secondary: var(--palette-dark-400);
+  --color-text-disabled: var(--palette-dark-600);
+
+  --color-background-base: var(--palette-dark-950);
+  --color-background-secondary: var(--palette-dark-850);
+  --color-background-disabled: var(--palette-dark-800);
+  --color-background-overlay: var(--palette-dark-900-a80);
+  --color-background-placeholder: var(--palette-dark-750);
+
+  --color-base-white: var(--palette-dark-900);
+
+  --color-system-error: var(--palette-red-dark);
+  --color-system-error-95: var(--palette-red-dark-a95);
+  --color-system-error-bg: var(--palette-red-dark-a16);
+  --color-system-warning: var(--palette-yellow-dark);
+  --color-system-success: var(--palette-green-dark);
+
+  --color-accent-violet: var(--palette-violet-dark);
+  --color-accent-violet-10: color-mix(in srgb, var(--palette-violet-dark) 20%, transparent);
+
+  --color-background-inverse: var(--palette-dark-800);
+  --color-background-info: var(--palette-blue-dark);
+  --color-background-header: var(--palette-dark-950);
+  --color-border-tertiary: var(--palette-dark-500);
+
+  --shadow-sm: 0 0 6px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 0 12px 0 rgb(0 0 0 / 0.5);
+
+  /* Иллюстрации: карта (color/map/*), метро, выбранное место (color/seat/halo) */
+  --illustration-map-land: #1e1f22;
+  --illustration-map-block: #2a2b2f;
+  --illustration-map-park: #24302a;
+  --illustration-map-water: #14304a;
+  --illustration-map-road: #3a3b40;
+  --illustration-map-water-label: #6fb3e0;
+  --illustration-metro-line: #b866c9;
+  --illustration-map-mark-halo: #3a3a3d;
+  --map-label: #9a9ba1;
+  --map-label-strong: #e3e3e6;
+  --map-label-halo: #1e1f22;
+
+  color: var(--color-text-primary);
+}

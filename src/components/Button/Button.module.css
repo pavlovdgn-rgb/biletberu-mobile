@@ -1,0 +1,22 @@
+.root {
+  display: flex; align-items: center; justify-content: center; gap: var(--spacing-md);
+  width: 100%; border: 1px solid transparent; border-radius: var(--radius-lg); cursor: pointer;
+  transition: background-color var(--motion-duration) var(--motion-ease), filter var(--motion-duration) var(--motion-ease),
+    transform var(--motion-duration) var(--motion-ease), box-shadow var(--motion-duration) var(--motion-ease);
+}
+.root:focus-visible { outline: 2px solid var(--color-primary-orange); outline-offset: 2px; }
+.root:not(:disabled):hover { filter: brightness(0.94); }
+.root:not(:disabled):active { transform: scale(0.98); }
+.Lg { min-height: 52px; padding: var(--spacing-md) var(--spacing-lg); }
+.Sm { min-height: 36px; padding: var(--spacing-md) var(--spacing-lg); }
+.container { display: flex; align-items: center; gap: var(--spacing-lg); }
+.Lg .container { padding: var(--spacing-lg) 0; }
+.Primary   { background: var(--color-primary-orange); color: var(--color-static-white); }
+.Primary.withIcon { background: var(--color-primary-orange-90); }
+.Secondary { background: var(--color-background-secondary); color: var(--color-text-primary); }
+.Tertiary  { background: transparent; color: var(--color-text-primary); border-color: var(--color-border-tertiary); }
+.Primary.Disabled { background: var(--color-background-disabled); color: var(--color-text-disabled); }
+.Secondary.Disabled, .Tertiary.Disabled { opacity: var(--opacity-disabled); }
+.Disabled { cursor: not-allowed; }
+.sub { color: color-mix(in srgb, var(--color-static-white) 92%, transparent); }
+.Secondary .sub, .Tertiary .sub { color: var(--color-text-secondary); }

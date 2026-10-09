@@ -1,0 +1,12 @@
+.root { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: var(--spacing-2xs);
+  width: 42px; height: 60px; padding: var(--spacing-xl) var(--spacing-md); border: 0; flex-shrink: 0;
+  border-radius: var(--radius-md); background: var(--color-background-base); cursor: pointer;
+  transition: background-color var(--motion-duration) var(--motion-ease), color var(--motion-duration) var(--motion-ease); }
+.root:hover { background: var(--color-background-secondary); }
+.root:focus-visible { outline: 2px solid var(--color-primary-orange); outline-offset: 2px; }
+.day { color: var(--color-text-primary); }
+.wd { color: var(--color-text-secondary); }
+.weekend .day, .weekend .wd { color: var(--color-system-error); }
+.Active, .Active:hover { background: var(--color-primary-orange); }
+.Active .day, .Active .wd { color: var(--color-static-white); }
+.ticket { position: absolute; top: calc(100% + var(--spacing-xs)); left: 50%; transform: translateX(-50%); color: var(--color-accent-violet); }

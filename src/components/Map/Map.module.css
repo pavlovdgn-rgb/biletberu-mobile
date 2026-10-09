@@ -1,0 +1,2 @@
+.tiles { display: block; user-select: none; background: url('./osm/map.svg') 0 0 / 100% 100% no-repeat; }
+:global([data-theme='dark']) .tiles { background-image: url('./osm/map-dark.svg'); }

@@ -1,0 +1,15 @@
+/* Демонстрационная обвязка вокруг приложения (не часть интерфейса): тёмная сцена и корпус iPhone 15 Pro */
+.stage { min-height: 100dvh; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 0%, var(--device-stage-top) 0%, var(--device-stage-bottom) 70%); }
+.scaler { flex-shrink: 0; transform-origin: center center; }
+.body { position: relative; width: 433px; height: 892px; padding: 4px; border-radius: 76px;
+  background: linear-gradient(135deg, var(--device-titanium-light), var(--device-titanium) 30%, var(--device-titanium-dark) 55%, var(--device-titanium) 80%, var(--device-titanium-light));
+  box-shadow: 0 40px 100px var(--device-shadow), 0 0 0 1px var(--device-edge); }
+.bezel { width: 100%; height: 100%; padding: 16px; border-radius: 72px; background: var(--device-bezel); }
+.screen { --app-height: 852px; position: relative; width: 393px; height: 852px; border-radius: 55px; overflow: hidden; isolation: isolate; background: var(--color-background-base); }
+.island { position: absolute; top: 11px; left: 50%; width: 125px; height: 37px; margin-left: -62.5px; border-radius: 20px; background: var(--device-bezel); z-index: 1000; pointer-events: none; }
+.btn { position: absolute; width: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--device-titanium-dark), var(--device-titanium-light)); }
+.action { left: -3px; top: 172px; height: 34px; }
+.volUp { left: -3px; top: 236px; height: 64px; }
+.volDown { left: -3px; top: 316px; height: 64px; }
+.power { right: -3px; top: 266px; height: 104px; }

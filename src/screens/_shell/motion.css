@@ -1,0 +1,14 @@
+/* Общие анимации приложения: подключены заранее (main.tsx), поэтому срабатывают с первого кадра — без мигания и рывков. */
+@keyframes bb-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes bb-fade-out { from { opacity: 1 } to { opacity: 0 } }
+@keyframes bb-sheet-in { from { transform: translate3d(0, 100%, 0) } to { transform: translate3d(0, 0, 0) } }
+@keyframes bb-sheet-out { from { transform: translate3d(0, 0, 0) } to { transform: translate3d(0, 100%, 0) } }
+
+.bb-dim { animation: bb-fade-in 220ms ease-out both; }
+.bb-dim--out { animation: bb-fade-out 220ms ease-in both; }
+.bb-sheet { animation: bb-sheet-in 340ms cubic-bezier(.2, .8, .2, 1) both; will-change: transform; backface-visibility: hidden; }
+.bb-sheet--out { animation: bb-sheet-out 240ms cubic-bezier(.4, 0, 1, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bb-dim, .bb-dim--out, .bb-sheet, .bb-sheet--out { animation-duration: 1ms; }
+}
