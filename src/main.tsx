@@ -55,7 +55,14 @@ function AppFrame() {
 
 installDragScroll();
 
-createRoot(document.getElementById('root')!).render(
+// Опубликованная версия (Vercel, GitHub Pages) — только приложение без корпуса: любой адрес вне /app/… ведёт в /app/… (главная — /app/main).
+// Индекс экранов и корпус iPhone остаются в локальной разработке (npm run dev).
+if (import.meta.env.PROD && !NATIVE) {
+  const base = import.meta.env.BASE_URL, rest = window.location.pathname.slice(base.length).replace(/^\/+/, '');
+  window.location.replace(`${base}app/${rest && rest !== 'showcase' ? rest : 'main'}${window.location.search}${window.location.hash}`);
+}
+
+if (!import.meta.env.PROD || NATIVE) createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <StoreProvider>
       <BrowserRouter basename={BASENAME}>
