@@ -66,10 +66,12 @@ export function installMobileStudyCollector(){
   const headers={'Content-Type':'application/json','X-UXLab-Participant':token};
   const url=(path:string)=>`${api}${path}?study=${encodeURIComponent(study)}`;
   const taskEvent=(kind:string,value='',label='')=>{
-    const current=page();if(!enabled||policy?.mode!=='scenario'||!current)return;
+    const current=page(),scenario=policy?.mode==='scenario';
+    const catalogSignal=kind==='screen_visited'||kind==='element_clicked'||kind==='prototype_event';
+    if(!enabled||!current||(!scenario&&!catalogSignal))return;
     if(kind==='started'&&run)return;
-    if(kind!=='started'&&!run?.activeTaskId)return;
-    const data:TaskEvent={id:uuid(),study,session,kind,taskId:kind==='started'?'':run?.activeTaskId||'',
+    if(scenario&&kind!=='started'&&!run?.activeTaskId)return;
+    const data:TaskEvent={id:uuid(),study,session,kind,taskId:scenario&&kind!=='started'?run?.activeTaskId||'':'',
       timestamp:Date.now(),page:current,vw:dimension(innerWidth,240),vh:dimension(innerHeight,200)};
     if(value)data.value=value;if(label)data.label=label.slice(0,200);
     queue.push({kind:'task',data});persist();void tick();
