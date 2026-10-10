@@ -2,6 +2,7 @@
 type Snapshot={id:string;study:string;html:string;width:number;height:number};
 const MAX_BYTES=4*1024*1024;
 const hash=(value:string)=>{let a=2166136261,b=3335557771;for(const char of value){a=Math.imul(a^char.charCodeAt(0),16777619);b=Math.imul(b^char.charCodeAt(0),2246822519);}return (a>>>0).toString(16).padStart(8,'0')+(b>>>0).toString(16).padStart(8,'0')};
+const absoluteAssetUrls=(value:string)=>value.replace(/url\(\s*(["']?)(\/assets\/[^"')\s]+)\1\s*\)/g,(_match,_quote,path)=>`url("${location.origin}${path}")`);
 
 export function createSnapshotSender(study:string,api:string,token:string){
   const typed=new Set<string>(),pending=new Map<string,Snapshot>();
@@ -59,7 +60,11 @@ export function createSnapshotSender(study:string,api:string,token:string){
         }
         if(element instanceof HTMLElement&&(element.scrollTop||element.scrollLeft))
           copy.setAttribute('data-ux-scroll',`${element.scrollLeft},${element.scrollTop}`);
-        if(copy instanceof HTMLElement)copy.style.fontFamily=getComputedStyle(element).fontFamily;
+        if(copy instanceof HTMLElement){
+          copy.style.fontFamily=getComputedStyle(element).fontFamily;
+          const style=copy.getAttribute('style');
+          if(style)copy.setAttribute('style',absoluteAssetUrls(style));
+        }
         for(const attribute of [...copy.attributes])
           if(attribute.name.startsWith('on')||['srcdoc','action','formaction','autofocus','value'].includes(attribute.name))copy.removeAttribute(attribute.name);
         if(copy instanceof HTMLAnchorElement)copy.removeAttribute('href');
