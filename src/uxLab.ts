@@ -1,10 +1,11 @@
 /** Opt-in study link collector. Ordinary app visits never contact UX-Lab. */
 import {screens} from './screens/registry';
+import {createSnapshotSender} from './uxSnapshot';
 import './uxLab.css';
 
 type Link={study:string;token:string;api:string};
 type Visit={id:string;study:string;session:string;page:string;timestamp:number;vw:number;vh:number;context:{signature:string;scrolls:number[][]}};
-type Click={id:string;study:string;session:string;seq:number;page:string;version:string;target:string;x:number;y:number;vw:number;vh:number;rw:number;rh:number;scroll_x:number;scroll_y:number;timestamp:number;context:{signature:string;scrolls:number[][];element:{label:string;rect:number[]}}};
+type Click={id:string;study:string;session:string;seq:number;page:string;version:string;target:string;x:number;y:number;vw:number;vh:number;rw:number;rh:number;scroll_x:number;scroll_y:number;timestamp:number;context:{signature:string;scrolls:number[][];snapshot?:string;element:{label:string;rect:number[]}}};
 type TaskEvent={id:string;study:string;session:string;kind:string;taskId:string;timestamp:number;page:string;vw:number;vh:number;value?:string;label?:string};
 type Task={id:string;title:string;instruction:string};
 type Attempt={taskId:string;title:string;scenario:string;ordinal:number;finishedAt:number|null;revision:string};
@@ -26,7 +27,6 @@ function linkFromUrl():Link|null{
       if(!/^[a-zA-Z0-9_.:-]{1,120}$/.test(study)||!/^[a-f0-9]{64}$/.test(token)||parsed.protocol!=='https:'||parsed.hostname!=='dashboard-woad-one-64.vercel.app')return null;
       const link={study,token,api:parsed.origin};
       sessionStorage.setItem(LINK_KEY,JSON.stringify(link));
-      history.replaceState(history.state,'',location.pathname+location.search);
       return link;
     }catch{return null;}
   }
@@ -57,14 +57,41 @@ export function installMobileStudyCollector(){
   const link=linkFromUrl();if(!link)return;
   const {study,token,api}=link;
   const sessionKey=`uxlab-bb-session:${study}`,queueKey=`uxlab-bb-queue:${study}`;
-  let session=sessionStorage.getItem(sessionKey);if(!session){session=uuid();sessionStorage.setItem(sessionKey,session);}
+  const handedSession=new URLSearchParams(location.hash.slice(1)).get('ux_session');
+  let session=handedSession&&/^[a-f0-9-]{36}$/.test(handedSession)?handedSession:sessionStorage.getItem(sessionKey);
+  if(!session)session=uuid();
+  sessionStorage.setItem(sessionKey,session);
+  const handedSequence=Number(new URLSearchParams(location.hash.slice(1)).get('ux_seq')||0);
+  let sequence=Math.max(Number(sessionStorage.getItem(`${sessionKey}:seq`)||0),Number.isSafeInteger(handedSequence)&&handedSequence>=0?handedSequence:0);
+  sessionStorage.setItem(`${sessionKey}:seq`,String(sequence));
+  const linkedUrl=(input:string|URL)=>{
+    const next=new URL(input,location.href);
+    if(next.origin!==location.origin||!next.pathname.includes('/app/'))return input.toString();
+    next.searchParams.set('ux_study',study);
+    next.hash=new URLSearchParams({ux_token:token,ux_api:api,ux_session:session,ux_seq:String(sequence)}).toString();
+    return next.pathname+next.search+next.hash;
+  };
+  history.replaceState(history.state,'',linkedUrl(location.href));
+  const captureSnapshot=createSnapshotSender(study,api,token);
   let queue:Pending[]=[];try{queue=JSON.parse(sessionStorage.getItem(queueKey)||'[]') as Pending[];}catch{/* A corrupt tab queue starts empty. */}
-  let enabled=false,clicks=false,visits=false,busy=false,lastPage='',sequence=Number(sessionStorage.getItem(`${sessionKey}:seq`)||'0');
+  let enabled=false,clicks=false,visits=false,busy=false,lastPage='';
   let policy:Policy|null=null,run:Run|null=null,panel:HTMLElement|null=null,dialog:HTMLDialogElement|null=null,shownTask='';
   try{run=JSON.parse(sessionStorage.getItem(`${sessionKey}:run`)||'null') as Run|null;}catch{/* Await the next task response. */}
   const persist=()=>{try{sessionStorage.setItem(queueKey,JSON.stringify(queue));}catch{/* Keep pending events in memory. */}};
   const headers={'Content-Type':'application/json','X-UXLab-Participant':token};
   const url=(path:string)=>`${api}${path}?study=${encodeURIComponent(study)}`;
+  const telegram=/Telegram/i.test(navigator.userAgent)||/https?:\/\/(?:t\.me|telegram\.me|telegram\.org)\b/i.test(document.referrer)||'TelegramWebviewProxy' in window;
+  if(telegram&&!sessionStorage.getItem(`${sessionKey}:browser-tip`)){
+    const banner=document.createElement('aside');banner.className='uxlab-browser-tip';banner.dataset.uxlabOverlay='true';
+    banner.innerHTML='<p>Для большего экрана откройте меню Telegram и выберите «Открыть в браузере».</p><div><button type="button" data-copy>Скопировать ссылку</button><button type="button" data-close>Продолжить здесь</button></div>';
+    document.body.append(banner);
+    banner.querySelector('[data-copy]')?.addEventListener('click',async()=>{
+      const full=new URL(linkedUrl(location.href),location.origin).href;
+      try{await navigator.clipboard.writeText(full);banner.querySelector('[data-copy]')!.textContent='Ссылка скопирована';}
+      catch{prompt('Скопируйте ссылку и откройте её в браузере',full);}
+    });
+    banner.querySelector('[data-close]')?.addEventListener('click',()=>{sessionStorage.setItem(`${sessionKey}:browser-tip`,'1');banner.remove();});
+  }
   const taskEvent=(kind:string,value='',label='')=>{
     const current=page(),scenario=policy?.mode==='scenario';
     const catalogSignal=kind==='screen_visited'||kind==='element_clicked'||kind==='prototype_event';
@@ -113,19 +140,20 @@ export function installMobileStudyCollector(){
     taskEvent('element_clicked',info.target,info.element.label);
     if(!clicks)return;
     sequence++;sessionStorage.setItem(`${sessionKey}:seq`,String(sequence));
-    const view=context();
+    history.replaceState(history.state,'',location.href);
+    const view=context(),snapshot=captureSnapshot();
     queue.push({kind:'click',data:{id:uuid(),study,session,seq:sequence,page:current,version:'biletberu-v1',target:info.target,
       x:Math.max(0,Math.min(1,event.clientX/innerWidth)),y:Math.max(0,Math.min(1,event.clientY/innerHeight)),
       vw:dimension(innerWidth,240),vh:dimension(innerHeight,200),rw:Math.min(10000,dimension(document.documentElement.scrollWidth,1)),
       rh:Math.min(50000,dimension(document.documentElement.scrollHeight,1)),scroll_x:scrollX,scroll_y:scrollY,
-      timestamp:Date.now(),context:{...view,element:info.element}}});persist();
+      timestamp:Date.now(),context:{...view,...(snapshot?{snapshot}:{}),element:info.element}}});persist();
   };
   document.addEventListener('click',onClick,true);
   addEventListener('ux-success-signal',(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.kind==='prototype_event'&&typeof detail.value==='string'&&detail.value.length<=200)taskEvent('prototype_event',detail.value);});
   const afterNavigation=()=>requestAnimationFrame(()=>{recordVisit();});
   const push=history.pushState,replace=history.replaceState;
-  history.pushState=function(...args){push.apply(this,args);afterNavigation();};
-  history.replaceState=function(...args){replace.apply(this,args);afterNavigation();};
+  history.pushState=function(data,unused,url){push.call(this,data,unused,url?linkedUrl(url):url);afterNavigation();};
+  history.replaceState=function(data,unused,url){replace.call(this,data,unused,url?linkedUrl(url):url);afterNavigation();};
   addEventListener('popstate',afterNavigation);
   async function tick(){
     if(busy)return;busy=true;

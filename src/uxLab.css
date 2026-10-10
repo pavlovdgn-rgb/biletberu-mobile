@@ -11,6 +11,36 @@
   cursor: pointer;
 }
 
+.uxlab-browser-tip {
+  position: fixed;
+  z-index: 10001;
+  top: max(12px, env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  max-width: 430px;
+  margin-inline: auto;
+  padding: 14px;
+  border: 1px solid var(--color-border-tertiary, #ddd);
+  border-radius: 14px;
+  color: var(--color-text-primary, #171717);
+  background: var(--color-background-base, #fff);
+  box-shadow: 0 8px 30px #0003;
+  font: 500 14px/1.4 Inter, system-ui, sans-serif;
+}
+
+.uxlab-browser-tip p { margin: 0 0 10px; }
+.uxlab-browser-tip div { display: flex; gap: 8px; flex-wrap: wrap; }
+.uxlab-browser-tip button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border-tertiary, #ddd);
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
 .uxlab-study-open {
   border: 1px solid var(--color-border-tertiary, #222);
   border-radius: 999px;
