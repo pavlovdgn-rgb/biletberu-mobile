@@ -76,6 +76,15 @@ export function installMobileStudyCollector(){
   let queue:Pending[]=[];try{queue=JSON.parse(sessionStorage.getItem(queueKey)||'[]') as Pending[];}catch{/* A corrupt tab queue starts empty. */}
   let enabled=false,clicks=false,visits=false,busy=false,lastPage='';
   let policy:Policy|null=null,run:Run|null=null,panel:HTMLElement|null=null,dialog:HTMLDialogElement|null=null,shownTask='';
+  const bodyStyle=document.body.style;
+  const previousLayout={height:bodyStyle.getPropertyValue('--app-height'),bar:bodyStyle.getPropertyValue('--uxlab-taskbar-height'),overflow:bodyStyle.overflow};
+  const clearTaskbar=()=>{
+    if(dialog?.open)dialog.close();panel?.remove();panel=null;dialog=null;shownTask='';
+    for(const [name,value] of [['--app-height',previousLayout.height],['--uxlab-taskbar-height',previousLayout.bar]]){
+      if(value)bodyStyle.setProperty(name,value);else bodyStyle.removeProperty(name);
+    }
+    bodyStyle.overflow=previousLayout.overflow;
+  };
   try{run=JSON.parse(sessionStorage.getItem(`${sessionKey}:run`)||'null') as Run|null;}catch{/* Await the next task response. */}
   const persist=()=>{try{sessionStorage.setItem(queueKey,JSON.stringify(queue));}catch{/* Keep pending events in memory. */}};
   const headers={'Content-Type':'application/json','X-UXLab-Participant':token};
@@ -104,11 +113,14 @@ export function installMobileStudyCollector(){
     queue.push({kind:'task',data});persist();void tick();
   };
   const renderTask=()=>{
-    if(!enabled||policy?.mode!=='scenario'||!policy.tasks?.length){panel?.remove();panel=null;dialog=null;return;}
+    if(!enabled||policy?.mode!=='scenario'||!policy.tasks?.length||run&&!run.activeTaskId){if(panel)clearTaskbar();return;}
     if(!panel){
-      panel=document.createElement('aside');panel.className='uxlab-study';panel.dataset.uxlabOverlay='true';
+      panel=document.createElement('aside');panel.className='uxlab-study';panel.dataset.uxlabOverlay='true';panel.dataset.uxlabTaskbar='true';
       panel.innerHTML='<button type="button" class="uxlab-study-open">Задание</button><dialog class="uxlab-study-dialog" aria-label="Задание исследования"><p class="uxlab-study-caption"></p><h2 class="uxlab-study-title"></h2><p class="uxlab-study-instruction"></p><p class="uxlab-study-status" role="status"></p><div class="uxlab-study-actions"><button type="button" class="uxlab-study-finish">Завершить задание</button><button type="button" class="uxlab-study-close">К приложению</button></div></dialog>';
-      document.body.append(panel);dialog=panel.querySelector('dialog');
+      bodyStyle.setProperty('--uxlab-taskbar-height','40px');
+      bodyStyle.setProperty('--app-height','calc(100dvh - var(--uxlab-taskbar-height))');
+      bodyStyle.overflow='hidden';
+      document.body.insertBefore(panel,document.getElementById('root'));dialog=panel.querySelector('dialog');
       panel.querySelector('.uxlab-study-open')?.addEventListener('click',()=>dialog?.showModal());
       panel.querySelector('.uxlab-study-close')?.addEventListener('click',()=>dialog?.close());
       panel.querySelector('.uxlab-study-finish')?.addEventListener('click',()=>{if(run?.activeTaskId&&!queue.some(item=>item.kind==='task'&&item.data.kind==='finished'))taskEvent('finished');renderTask();});
@@ -118,16 +130,16 @@ export function installMobileStudyCollector(){
     const title=attempt?.title||fallback.title;
     const instruction=attempt?.scenario||fallback.instruction;
     const ordinal=attempt?.ordinal??0,total=run?.totalTasks||policy.tasks.length;
-    const complete=Boolean(run&&!run.activeTaskId);
-    panel.querySelector('.uxlab-study-open')!.textContent=complete?'Задания завершены':`Задание ${ordinal+1}/${total}`;
+    panel.querySelector('.uxlab-study-open')!.textContent=`Задание ${ordinal+1}/${total}`;
+    panel.querySelector('.uxlab-study-open')!.setAttribute('aria-label',`Открыть задание ${ordinal+1} из ${total}`);
     panel.querySelector('.uxlab-study-caption')!.textContent=policy.studyTitle;
-    panel.querySelector('.uxlab-study-title')!.textContent=complete?'Спасибо за участие':title;
-    panel.querySelector('.uxlab-study-instruction')!.textContent=complete?'Все задания этого исследования завершены.':instruction;
-    panel.querySelector('.uxlab-study-status')!.textContent=complete?'':run?`Выполнено ${run.finishedTasks} из ${total}`:'Загрузка задания…';
-    (panel.querySelector('.uxlab-study-finish') as HTMLButtonElement).hidden=complete||!run?.activeTaskId;
+    panel.querySelector('.uxlab-study-title')!.textContent=title;
+    panel.querySelector('.uxlab-study-instruction')!.textContent=instruction;
+    panel.querySelector('.uxlab-study-status')!.textContent=run?`Выполнено ${run.finishedTasks} из ${total}`:'Загрузка задания…';
+    (panel.querySelector('.uxlab-study-finish') as HTMLButtonElement).hidden=!run?.activeTaskId;
     (panel.querySelector('.uxlab-study-finish') as HTMLButtonElement).disabled=queue.some(item=>item.kind==='task'&&item.data.kind==='finished');
     const key=attempt?`${attempt.taskId}:${attempt.revision}`:fallback.id;
-    if(!complete&&key!==shownTask){shownTask=key;if(!dialog?.open)dialog?.showModal();}
+    if(key!==shownTask){shownTask=key;if(!dialog?.open)dialog?.showModal();}
   };
   const recordVisit=()=>{
     const current=page();if(!enabled||!current||current===lastPage)return;

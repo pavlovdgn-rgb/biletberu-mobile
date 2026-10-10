@@ -70,6 +70,15 @@ export function createSnapshotSender(study:string,api:string,token:string){
         if(copy instanceof HTMLAnchorElement)copy.removeAttribute('href');
         if(copy instanceof HTMLImageElement){copy.src=element instanceof HTMLImageElement?element.currentSrc||element.src:copy.src;copy.removeAttribute('srcset');}
       });
+      const taskbar=clone.querySelector('[data-uxlab-taskbar]');
+      if(taskbar){
+        const spacer=document.createElement('div');
+        spacer.dataset.uxlabSpacer='true';
+        spacer.style.cssText='height:var(--uxlab-taskbar-height);width:min(100%,430px);margin:0 auto;background:var(--color-background-secondary)';
+        const liveTaskbar=source.querySelector('[data-uxlab-taskbar]');
+        if(liveTaskbar)spacer.style.backgroundColor=getComputedStyle(liveTaskbar).backgroundColor;
+        taskbar.replaceWith(spacer);
+      }
       clone.querySelectorAll('script,style,link,iframe,object,embed,meta,base,[data-uxlab-overlay],[data-ux-private],[contenteditable]').forEach(element=>element.remove());
       const hidden=[...secrets].filter(value=>value.trim()).sort((a,b)=>b.length-a.length);
       const redact=(text:string)=>hidden.reduce((result,value)=>result.split(value).join('•••'),text);
