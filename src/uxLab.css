@@ -104,6 +104,14 @@
   background: #171717;
 }
 
+[data-theme='dark'] .uxlab-study-actions .uxlab-study-close {
+  border-color: var(--color-primary-orange);
+  color: var(--color-static-black);
+  background: var(--color-primary-orange);
+  font-weight: 700;
+  box-shadow: 0 4px 14px var(--color-primary-orange-10);
+}
+
 .uxlab-study-actions button:disabled {
   cursor: wait;
   opacity: .5;
