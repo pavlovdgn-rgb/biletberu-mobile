@@ -291,11 +291,6 @@ export const planPlaces = (ids: string[] | undefined) => (ids ?? []).filter((id)
 export const justBought = new Set<string>();
 type PlanState = { tickets: Ticket[]; plans: Record<string, string[]>; planEvents: Record<string, string> };
 export const hasTicketOn = (st: { tickets: Ticket[] }, date: string) => st.tickets.some((t) => ticketEvent(t)?.dateISO === date);
-/** Планы без билета: дни, где уже есть места, а билета нет (прошедшие — не показываем). Событие — то, вокруг которого собирали план. */
-export function waitingPlans(st: PlanState): Array<{ date: string; event?: EventItem; places: string[] }> {
-  return Object.keys(st.plans).filter((d) => d >= TODAY && planPlaces(st.plans[d]).length > 0 && !hasTicketOn(st, d)).sort()
-    .map((d) => ({ date: d, event: eventById(st.planEvents[d] ?? '') ?? EVENTS.find((e) => e.dateISO === d), places: planPlaces(st.plans[d]) }));
-}
 /** Напоминание на главной: ближайшее купленное событие через 0–7 дней, план на его день пуст, не скрыто и куплено не в этой сессии. */
 export function planReminder(st: PlanState & { hiddenReminders: string[]; planPromptEnabled: boolean }): { event: EventItem; days: number } | null {
   if (!st.planPromptEnabled) return null;

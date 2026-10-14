@@ -4,7 +4,7 @@ import { Button, ButtonIcon, Card, HomeIndicator, Icon, PriceTag, Radio, StatusB
 import { photos } from '../../assets/photos';
 import { eventById, placeById, priceLabel, ruDate, whenLabel, type EventItem } from '../../data/mock';
 import { ACTIVITIES, PERSONS, VENUES, personById, venueById } from '../../data/people';
-import { TODAY, hasTicketOn, planPlaces, ticketEvent, useStore, waitingPlans } from '../../data/store';
+import { TODAY, hasTicketOn, ticketEvent, useStore } from '../../data/store';
 import { BottomSheet } from '../_shell/BottomSheet';
 import { EmptyState, NavBar, useClose } from '../_shell/app';
 import { Rail, Screen } from '../_shell/Screen';
@@ -151,20 +151,23 @@ export function Activity() {
   const inPlan = !!date && (store.state.plans[date] ?? []).includes(id);
   const hasTicket = !!date && hasTicketOn(store.state, date);
   const dayText = date ? ruDate(date) : '';
-  const count = date ? planPlaces(store.state.plans[date]).length : 0;
+  // без контекста мероприятия добавить можно только в день с билетом; билетов нет — ведём к мероприятиям
+  const ticketDays = store.state.tickets.some((t) => (ticketEvent(t)?.dateISO ?? '') >= TODAY);
   const add = (d: string, eventId?: string, ticket = hasTicketOn(store.state, d)) => {
     const prev = store.state.plans[d] ?? [];
     store.addToPlan(d, id, eventId);
     store.toast(ticket ? `Добавлено в план на ${ruDate(d)}` : `${place.name} — в плане на ${ruDate(d)}`, 'success', { label: 'Отменить', onClick: () => store.setPlan(d, prev) });
   };
   const togglePlan = () => {
-    if (!date) { setPick(true); return; }
+    if (!date) { if (ticketDays) setPick(true); else nav('/main'); return; }
     if (inPlan) { const prev = store.state.plans[date] ?? []; store.removeFromPlan(date, id); store.toast(`Убрано из плана на ${dayText}`, 'info', { label: 'Отменить', onClick: () => store.setPlan(date, prev) }); return; }
     add(date, ctxEvent?.id, hasTicket);
   };
   // нет билета на этот день — честно говорим, что будет: место в плане, останется купить билет
-  const hint = date && !hasTicket ? (inPlan ? `В плане на ${dayText} ${count} ${count === 1 ? 'место' : count < 5 ? 'места' : 'мест'}. Осталось купить билет.` : `У вас нет билета на ${dayText}. Место сохраним в план — останется купить билет.`) : null;
-  const label = inPlan ? 'Убрать из плана' : !date ? 'Добавить в план' : hasTicket ? 'Добавить в план дня' : `Добавить в план на ${dayText}`;
+  // до покупки место видно только на странице мероприятия, после покупки — сразу в плане дня (Figma: Activity — no ticket `438:39790`)
+  const hint = !date ? (ticketDays ? null : `План дня собирается вокруг купленного билета. Выберите мероприятие${a.liked ? ' — место уже в избранном' : ', а место сохраните в избранное'}.`)
+    : !hasTicket ? (inPlan ? 'Место отмечено — оно на странице мероприятия, после покупки будет в плане дня.' : `Билета на ${dayText} пока нет. Место будет на странице мероприятия, а после покупки — сразу в плане дня.`) : null;
+  const label = inPlan ? 'Убрать из плана' : !date ? (ticketDays ? 'Добавить в план' : 'Выбрать мероприятие') : hasTicket ? 'Добавить в план дня' : `Добавить в план на ${dayText}`;
   return (
     <div style={{ position: 'relative', height: 'var(--app-height, 100dvh)', overflow: 'hidden', background: 'color-mix(in srgb, var(--color-static-black) 60%, transparent)' }}>
       <StatusBar theme="Dark" />
@@ -193,12 +196,11 @@ export function Activity() {
   );
 }
 
-/** «Добавить в план» без контекста мероприятия (из «Избранного»): дни с билетами и планы без билета. Ничего нет — «Выбрать мероприятие». */
+/** «Добавить в план» без контекста мероприятия (из «Избранного»): выбор дня, на который есть билет (Figma: favourites — add to plan `438:41008`). */
 function PlanPickSheet({ placeId, placeName, onClose, onPick, onChooseEvent }: { placeId: string; placeName: string; onClose: () => void; onPick: (date: string, eventId?: string) => void; onChooseEvent: () => void }) {
   const { state } = useStore();
   const byDate = new Map<string, { date: string; title: string; sub: string; eventId?: string }>();
   for (const t of state.tickets) { const e = ticketEvent(t); if (e && e.dateISO >= TODAY && !byDate.has(e.dateISO)) byDate.set(e.dateISO, { date: e.dateISO, title: e.title, sub: 'Билет есть', eventId: e.id }); }
-  for (const w of waitingPlans(state)) if (!byDate.has(w.date)) byDate.set(w.date, { date: w.date, title: w.event?.title ?? 'План дня', sub: 'Билета пока нет', eventId: w.event?.id });
   const options = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
   const [sel, setSel] = useState(options[0]?.date ?? null);
   return (

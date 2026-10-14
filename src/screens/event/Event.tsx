@@ -4,7 +4,7 @@ import { ActionMenu, AgeBadge, ButtonIcon, Button, HomeIndicator, Icon, Image, M
 import { appUrl } from '../../components/_lib/native';
 import { photoSrc, photos } from '../../assets/photos';
 import { Rail, Screen } from '../_shell/Screen';
-import { MAIN_EVENT_ID, PLACE_GEO, eventById, eventGeo, placeById, placesNear, rub, ruDate } from '../../data/mock';
+import { MAIN_EVENT_ID, PLACE_GEO, eventById, eventGeo, placeById, placesNear, rub } from '../../data/mock';
 import { ACTIVITIES } from '../../data/people';
 import { hasTicketOn, planPlaces, useStore } from '../../data/store';
 import { venueOf } from '../../data/venues';
@@ -154,16 +154,16 @@ export function Event() {
             <span><TextButtons onClick={() => nav(`/map?id=${e.id}`)}>Все места рядом</TextButtons></span>
           </div>
         </Section>}
-        {/* план без билета: места, добавленные со страницы события, ждут покупки (Figma: Event_page — plan waits for ticket `438:40482`) */}
+        {/* места, отмеченные до покупки, — только здесь; после покупки они в плане дня (Figma: Event_page — marked places `438:40482`) */}
         {waiting.length > 0 && <Section>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}><Icon name="route" size={20} style={{ color: 'var(--color-accent-violet)' }} /><span className="ds-heading-h3">Ваш план на {ruDate(e.dateISO)} · {waiting.length} {waiting.length === 1 ? 'место' : waiting.length < 5 ? 'места' : 'мест'}</span></span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}><Icon name="route" size={20} style={{ color: 'var(--color-accent-violet)' }} /><span className="ds-heading-h3">Вы отметили рядом · {waiting.length} {waiting.length === 1 ? 'место' : waiting.length < 5 ? 'места' : 'мест'}</span></span>
           {waiting.map((p) => (
             <div key={p.id} role="link" tabIndex={0} onClick={() => open(`/activity?id=${p.id}&event=${e.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xl)', ...tap }}>
               <Image size="xxs" src={photos[p.image]} />
               <span style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', minWidth: 0 }}><span className="ds-price">{p.name}</span><span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>{p.time}</span></span>
             </div>
           ))}
-          <span className="ds-caption" style={{ color: 'var(--color-text-secondary)' }}>Купите билет — и план готов. Купите на другой день — перенесём план туда.</span>
+          <span className="ds-caption" style={{ color: 'var(--color-text-secondary)' }}>После покупки билета они сразу будут в плане дня.</span>
         </Section>}
         <Section pad="var(--spacing-2xl) 0 var(--spacing-3xl)">
           <TitlePage version="Secondary" title="Площадка" textButtonLabel="" />

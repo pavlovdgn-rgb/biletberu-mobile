@@ -62,14 +62,12 @@ export interface DatepickerRangeProps {
   onSelect?: (iso: string) => void;
   /** Дни с билетами (ISO) — для State=2. */
   ticketDates?: string[];
-  /** Дни с планом без билета (ISO) — контурный билет. */
-  waitDates?: string[];
   className?: string;
 }
 
 /** Datepicker в режиме «от сегодня»: лента на несколько месяцев, подпись месяца меняется при прокрутке (как в макете — над лентой),
  *  выбранный день при открытии и при смене прокручивается в начало видимой части. Figma: `132:17322`. */
-export function DatepickerRange({ state = '1', from, length = 60, value, onSelect, ticketDates = [], waitDates = [], className }: DatepickerRangeProps) {
+export function DatepickerRange({ state = '1', from, length = 60, value, onSelect, ticketDates = [], className }: DatepickerRangeProps) {
   const row = useRef<HTMLDivElement>(null);
   const dates = Array.from({ length }, (_, i) => addDays(from, i));
   const [month, setMonth] = useState(MONTHS[Number(from.slice(5, 7)) - 1]);
@@ -90,12 +88,12 @@ export function DatepickerRange({ state = '1', from, length = 60, value, onSelec
   return (
     <div className={cx(s.root, className)}>
       <span className={cx('ds-caption', s.month)}>{month}</span>
-      <div ref={row} onScroll={syncMonth} className={cx(s.row, state === '2' && ticketDates.length + waitDates.length > 0 && s.tickets)} role="listbox" aria-label={month}>
+      <div ref={row} onScroll={syncMonth} className={cx(s.row, state === '2' && ticketDates.length > 0 && s.tickets)} role="listbox" aria-label={month}>
         {dates.map((iso) => {
           const d = new Date(`${iso}T12:00:00`), wd = (d.getDay() + 6) % 7;
           return (
             <Numb key={iso} data-date={iso} compact day={d.getDate()} weekday={WD[wd]} weekend={wd >= 5 ? 'Yes' : 'No'} state={iso === value ? 'Active' : 'Default'}
-              ticket={state !== '2' ? 'No' : ticketDates.includes(iso) ? 'Yes' : waitDates.includes(iso) ? 'Wait' : 'No'} onClick={() => onSelect?.(iso)} />
+              ticket={state === '2' && ticketDates.includes(iso) ? 'Yes' : 'No'} onClick={() => onSelect?.(iso)} />
           );
         })}
       </div>
