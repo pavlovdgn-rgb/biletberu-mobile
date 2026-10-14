@@ -23,7 +23,8 @@ export interface MapMarkerProps {
 export function MapMarker({ text = 'Yes', size = 'Lg', bulb = 'Yes', label = 'Прогулка на катере', order = 1, image, style, className }: MapMarkerProps) {
   const d = size === 'Sm' ? 32 : size === 'Lg' ? 36 : 48;
   // на карте подпись зависит от зума; вне карты (витрина, Storybook) масштаб = 1 — подпись видна
-  const showLabel = text === 'Yes' && useMapScale() >= MARKER_LABEL_MIN_SCALE;
+  const scale = useMapScale();
+  const showLabel = text === 'Yes' && scale >= MARKER_LABEL_MIN_SCALE;
   return (
     <span className={className} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-xs)', width: 65, ...style }}>
       <span style={{ position: 'relative', width: d, height: d, borderRadius: 'var(--radius-sm)', border: '2px solid var(--color-static-white)', boxShadow: 'var(--shadow-sm)',

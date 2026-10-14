@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Button, Card, HomeIndicator, Image, PriceTag, StatusBar, Tabs, TextButtons, TitlePage } from '../../components';
+import { Button, Card, HomeIndicator, Icon, Image, PriceTag, StatusBar, Tabs, TextButtons, TitlePage } from '../../components';
 import { photos } from '../../assets/photos';
 import { type EventItem } from '../../data/mock';
-import { TODAY, refundUntil, ticketEvent, useStore, type RefundedTicket, type Ticket } from '../../data/store';
+import { TODAY, planPlaces, refundUntil, ticketEvent, useStore, type RefundedTicket, type Ticket } from '../../data/store';
 import { MovedBanner } from '../refund/Refund';
 import { EmptyState, NavBar } from '../_shell/app';
 import { Screen } from '../_shell/Screen';
@@ -117,6 +117,14 @@ export function Tickets() {
                   <span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>{hero.e.date}, {hero.e.time} · {hero.e.address}</span>
                   <span className="ds-body">{seatsLabel(hero.tickets)}{hero.tickets.length === 1 ? `, ряд ${hero.tickets[0].row}, место ${hero.tickets[0].place}` : ''}</span>
                 </div>
+                {/* вход в план дня, пока он пуст (Figma: Tickets — list, plan entry `444:42420`) */}
+                {planPlaces(state.plans[hero.e.dateISO]).length === 0 && (
+                  <button type="button" onClick={(ev) => { ev.stopPropagation(); nav(`/plan?date=${hero.e.dateISO}`, { state: { tab: true } }); }} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-lg)', padding: 'var(--spacing-xl)', border: 0, borderRadius: 'var(--radius-md)', background: 'var(--color-base-white)', color: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
+                    <Icon name="route" size={20} style={{ color: 'var(--color-accent-violet)' }} />
+                    <span className="ds-body" style={{ flex: 1 }}>Спланировать день вокруг события</span>
+                    <Icon name="chevron-right" size={20} style={{ color: 'var(--color-text-secondary)' }} />
+                  </button>
+                )}
                 <Button onClick={(ev) => { ev.stopPropagation(); open(hero); }}>{hero.tickets.length > 1 ? 'Показать билеты' : 'Показать билет'}</Button>
               </div>
             )}

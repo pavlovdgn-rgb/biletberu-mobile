@@ -4,7 +4,9 @@ import { Button, ButtonIcon, ButtonTag, DatepickerRange, HomeIndicator, Icon, Lo
 import { photos } from '../../assets/photos';
 import { MORE_PLACES } from '../../data/places-more';
 import { PLACES, PLACE_FILTERS, PLACE_GEO, placesWord, weekday, eventGeo, placesNear, MAIN_EVENT_ID } from '../../data/mock';
-import { TODAY, dayPlan, ticketEvent, dayStats, itemGeo, placeKey, useStore, type PlanItem } from '../../data/store';
+import { TODAY, dayPlan, ticketEvent, dayStats, itemGeo, placeKey, useStore, waitingPlans, type PlanItem } from '../../data/store';
+import { Image } from '../../components';
+import { placeById, ruDate } from '../../data/mock';
 import { EmptyState, NavBar, useOpen } from '../_shell/app';
 import { Screen } from '../_shell/Screen';
 import { EditPlanSheet } from './EditPlanSheet';
@@ -53,6 +55,8 @@ export function Plan({ state }: { state?: 'add' }) {
   // подсветка только что добавленной точки плана
   const [fresh, setFresh] = useState<string | null>(null);
   const hasTicket = ticketDates.includes(date);
+  const waiting = waitingPlans(store.state);
+  const waitHere = waiting.find((x) => x.date === date);
   // В плане — только события по билетам и активности, которые пользователь добавил сам
   const { activities, items } = dayPlan(store.state, date);
   const inPlan = (id: string) => activities.some((p) => p.id === id);
@@ -95,7 +99,7 @@ export function Plan({ state }: { state?: 'add' }) {
       <div style={{ display: 'flex', alignItems: 'center', padding: '0 var(--spacing-2xl) var(--spacing-xl)', minHeight: 48 }}>
         <span className="ds-heading-h2" style={{ flex: 1, textAlign: 'center' }}>Куда пойдём</span>
       </div>
-      <div style={{ padding: '0 0 var(--spacing-4xl) var(--spacing-2xl)' }}><DatepickerRange state="2" from={stripFrom} length={70} value={date} ticketDates={ticketDates} onSelect={setDate} /></div>
+      <div style={{ padding: '0 0 var(--spacing-4xl) var(--spacing-2xl)' }}><DatepickerRange state="2" from={stripFrom} length={70} value={date} ticketDates={ticketDates} waitDates={waiting.map((x) => x.date)} onSelect={setDate} /></div>
     </div>
   );
   const SHEET_ORDER = ['mozz', 'platform', 'willow', 'square', 'boat', 'garden', 'nook', 'peacock', 'russian', ...MORE_PLACES.map((p) => p.id)];
@@ -135,7 +139,20 @@ export function Plan({ state }: { state?: 'add' }) {
   return (
     <Screen header={header} footer={<div><NavBar active={1} /><HomeIndicator /></div>} overlay={sheetEl || (routes && <RoutesSheet onTake={takeRoute} onClose={() => setRoutes(false)} />) || (edit && <EditPlanSheet key={date + activities.length} date={date} title={`${WD_FULL[w.wd]}, ${dayNum} ${monthGen(date)}`} items={items} onClose={() => setEdit(false)} onAdd={() => { setEdit(false); setBackToEdit(true); setSheet(true); }} />)}>
       <div style={{ ...white, borderRadius: 'var(--radius-2xl)', marginTop: 'var(--spacing-xl)', paddingTop: 'var(--spacing-3xl)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2xl)', minHeight: '60%' }}>
-        {!hasTicket ? (
+        {!hasTicket && waitHere ? (
+          // день с планом без билета: что уже выбрано и «Купить билет»
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', padding: '0 var(--spacing-2xl) var(--spacing-4xl)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}><Icon name="route" size={20} style={{ color: 'var(--color-accent-violet)' }} /><span className="ds-heading-h3">План на {ruDate(date)} · {waitHere.event?.title ?? 'без билета'}</span></span>
+            {waitHere.places.map(placeById).filter((p): p is NonNullable<ReturnType<typeof placeById>> => !!p).map((p) => (
+              <div key={p.id} role="link" tabIndex={0} onClick={() => open(`/activity?id=${p.id}&date=${date}`)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xl)', cursor: 'pointer' }}>
+                <Image size="xxs" src={photos[p.image]} />
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', minWidth: 0 }}><span className="ds-price">{p.name}</span><span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>{p.time}</span></span>
+              </div>
+            ))}
+            <span className="ds-caption" style={{ color: 'var(--color-text-secondary)' }}>Билета на этот день нет. Купите билет — и план готов.</span>
+            <Button size="Sm" onClick={() => nav(waitHere.event ? `/sessions?id=${waitHere.event.id}` : '/main')}>Купить билет</Button>
+          </div>
+        ) : !hasTicket ? (
           <EmptyState icon="ticket" title={`На ${dayNum} ${monthGen(date).toLowerCase()} нет билетов`} text="План дня собирается вокруг купленного события. Выберите день с отметкой билета или купите билет" action="Выбрать мероприятие" onAction={() => nav('/main')} />
         ) : <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', padding: '0 var(--spacing-2xl)' }}>

@@ -37,6 +37,10 @@ type State = {
   moved: Record<string, Moved>;
   /** Отзывы пользователя по id мероприятия. */
   myReviews: Record<string, MyReview>;
+  /** Вокруг какого мероприятия собран план дня (дата → id). Нужен плану без билета: «Купить билет» ведёт на это мероприятие, после покупки другого сеанса план переезжает. */
+  planEvents: Record<string, string>;
+  /** Скрытые напоминания «Спланировать день» на главной (`eventId@dateISO`). */
+  hiddenReminders: string[];
 };
 export type Profile = {
   loggedIn: boolean;
@@ -75,6 +79,8 @@ const SEED: State = {
   refunded: [],
   moved: {},
   myReviews: {},
+  planEvents: {},
+  hiddenReminders: [],
 };
 const KEY = 'bilet-beru-demo-v3'; // v3: пустой старт — старые демо-данные (v2) не подхватываем
 const load = (): State => { try { const raw = localStorage.getItem(KEY); if (!raw) return SEED; const st = { ...SEED, ...JSON.parse(raw) }; return { ...st, profile: { ...SEED.profile, ...st.profile } }; } catch { return SEED; } };
@@ -120,10 +126,23 @@ function useStoreValue() {
         zone: SEAT_ZONES[x.category - 1], price: SEAT_PRICES[x.category - 1], tariff: 'Базовый', owner, pay: method, bought: TODAY,
         code: String(Math.floor(1e11 + Math.random() * 9e11)).split('').join(' '),
       }));
-      set((st) => ({ ...st, tickets: [...fresh, ...st.tickets], cart: null, cardAttempts: method === 'card' ? st.cardAttempts + 1 : st.cardAttempts, planPrompt: st.planPromptEnabled ? { eventId: now.cart!.eventId, dateISO: now.cart!.session?.dateISO } : null }));
+      // план без билета на это мероприятие: купили его день — план просто «включается»; купили другой сеанс — переезжает на день сеанса
+      const eventId = now.cart.eventId, day = ticketEvent(fresh[0])?.dateISO ?? eventById(eventId)?.dateISO ?? TODAY;
+      const from = Object.keys(now.plans).find((d) => d !== day && now.planEvents[d] === eventId && d >= TODAY && planPlaces(now.plans[d]).length > 0 && !now.tickets.some((t) => ticketEvent(t)?.dateISO === d));
+      const moveFrom = from && planPlaces(now.plans[day]).length === 0 ? from : undefined;
+      justBought.add(`${eventId}@${day}`);
+      set((st) => {
+        const plans = { ...st.plans }, planEvents = { ...st.planEvents };
+        if (moveFrom) { plans[day] = plans[moveFrom]; delete plans[moveFrom]; delete planEvents[moveFrom]; }
+        planEvents[day] = planEvents[day] ?? eventId;
+        return { ...st, plans, planEvents, tickets: [...fresh, ...st.tickets], cart: null, cardAttempts: method === 'card' ? st.cardAttempts + 1 : st.cardAttempts, planPrompt: null };
+      });
       return { ok: true, count: fresh.length, total };
     },
-    addToPlan(date: string, placeId: string) { set((st) => ({ ...st, plans: { ...st.plans, [date]: [...(st.plans[date] ?? []).filter((x) => x !== placeId), placeId] } })); },
+    /** Добавить место в план дня. `eventId` — мероприятие, вокруг которого план (для плана без билета). */
+    addToPlan(date: string, placeId: string, eventId?: string) { set((st) => ({ ...st, plans: { ...st.plans, [date]: [...(st.plans[date] ?? []).filter((x) => x !== placeId), placeId] }, planEvents: eventId && !st.planEvents[date] ? { ...st.planEvents, [date]: eventId } : st.planEvents })); },
+    /** Скрыть напоминание «Спланировать день» на главной для события (`eventId@dateISO`). */
+    hideReminder(key: string) { set((st) => ({ ...st, hiddenReminders: [...st.hiddenReminders, key] })); },
     removeFromPlan(date: string, placeId: string) { set((st) => ({ ...st, plans: { ...st.plans, [date]: (st.plans[date] ?? []).filter((x) => x !== placeId) } })); },
     /** Сохранить порядок и состав плана дня (активности + метки событий `event:<id>`). */
     setPlan(date: string, ids: string[]) { set((st) => ({ ...st, plans: { ...st.plans, [date]: ids } })); },
@@ -143,8 +162,10 @@ function useStoreValue() {
       const key = e && `${e.id}@${e.dateISO}`;
       set((st) => {
         const plans = { ...st.plans }; if (opts.deletePlan) delete plans[opts.deletePlan];
+        // план оставили — он снова «без билета», привязан к этому мероприятию
+        const planEvents = { ...st.planEvents }; if (opts.deletePlan) delete planEvents[opts.deletePlan]; else if (e && plans[e.dateISO]) planEvents[e.dateISO] = e.id;
         const moved = { ...st.moved }; if (key) delete moved[key];
-        return { ...st, plans, moved, tickets: st.tickets.filter((t) => !ids.includes(t.id)), refunded: [...list.map((t) => ({ ...t, refund: r })), ...st.refunded] };
+        return { ...st, plans, planEvents, moved, tickets: st.tickets.filter((t) => !ids.includes(t.id)), refunded: [...list.map((t) => ({ ...t, refund: r })), ...st.refunded] };
       });
       return { id: r.id, count: list.length, amount: r.amount, until: r.until, pay: r.pay, planDeleted: !!opts.deletePlan };
     },
@@ -160,8 +181,8 @@ function useStoreValue() {
       set((st) => {
         const m = st.moved[key]; if (!m) return st;
         const moved = { ...st.moved }; delete moved[key];
-        const plans = { ...st.plans }; if (plans[m.fromISO] && !plans[m.toISO]) { plans[m.toISO] = plans[m.fromISO]; delete plans[m.fromISO]; }
-        return { ...st, moved, plans, tickets: st.tickets.map((t) => (t.eventId === m.eventId && ticketEvent(t)?.dateISO === m.fromISO ? { ...t, dateISO: m.toISO, time: m.time } : t)) };
+        const plans = { ...st.plans }, planEvents = { ...st.planEvents }; if (plans[m.fromISO] && !plans[m.toISO]) { plans[m.toISO] = plans[m.fromISO]; delete plans[m.fromISO]; planEvents[m.toISO] = m.eventId; delete planEvents[m.fromISO]; }
+        return { ...st, moved, plans, planEvents, tickets: st.tickets.map((t) => (t.eventId === m.eventId && ticketEvent(t)?.dateISO === m.fromISO ? { ...t, dateISO: m.toISO, time: m.time } : t)) };
       });
     },
     /** Опубликовать или обновить свой отзыв (0,8 с «сеть»). */
@@ -263,3 +284,23 @@ export function dayStats(items: PlanItem[], walkMeters: number) {
 export const ticketEvent = (t: Pick<Ticket, 'eventId' | 'dateISO' | 'time'>) => { const e = eventById(t.eventId); return e && sessionEvent(e, t); };
 /** Мероприятие в корзине — с выбранным сеансом. */
 export const cartEvent = (cart: State['cart']) => { const e = cart && eventById(cart.eventId); return e ? sessionEvent(e, cart!.session) : undefined; };
+
+/** Места плана (без меток событий `event:<id>`). */
+export const planPlaces = (ids: string[] | undefined) => (ids ?? []).filter((id) => !id.startsWith('event:') && id !== 'theatre');
+/** События, купленные в этой сессии: напоминание на главной для них не показываем — только что был экран «Оплата прошла». */
+export const justBought = new Set<string>();
+type PlanState = { tickets: Ticket[]; plans: Record<string, string[]>; planEvents: Record<string, string> };
+export const hasTicketOn = (st: { tickets: Ticket[] }, date: string) => st.tickets.some((t) => ticketEvent(t)?.dateISO === date);
+/** Планы без билета: дни, где уже есть места, а билета нет (прошедшие — не показываем). Событие — то, вокруг которого собирали план. */
+export function waitingPlans(st: PlanState): Array<{ date: string; event?: EventItem; places: string[] }> {
+  return Object.keys(st.plans).filter((d) => d >= TODAY && planPlaces(st.plans[d]).length > 0 && !hasTicketOn(st, d)).sort()
+    .map((d) => ({ date: d, event: eventById(st.planEvents[d] ?? '') ?? EVENTS.find((e) => e.dateISO === d), places: planPlaces(st.plans[d]) }));
+}
+/** Напоминание на главной: ближайшее купленное событие через 0–7 дней, план на его день пуст, не скрыто и куплено не в этой сессии. */
+export function planReminder(st: PlanState & { hiddenReminders: string[]; planPromptEnabled: boolean }): { event: EventItem; days: number } | null {
+  if (!st.planPromptEnabled) return null;
+  const evs = [...new Map(st.tickets.map((t) => ticketEvent(t)).filter((e): e is EventItem => !!e).map((e) => [`${e.id}@${e.dateISO}`, e])).values()]
+    .filter((e) => { const d = daysUntil(e.dateISO), key = `${e.id}@${e.dateISO}`; return d >= 0 && d <= 7 && planPlaces(st.plans[e.dateISO]).length === 0 && !st.hiddenReminders.includes(key) && !justBought.has(key); })
+    .sort((a, b) => (a.dateISO + a.time).localeCompare(b.dateISO + b.time));
+  return evs[0] ? { event: evs[0], days: daysUntil(evs[0].dateISO) } : null;
+}

@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
-import { Button, ButtonIcon, Card, HomeIndicator, Icon, PriceTag, StatusBar, TitlePage } from '../../components';
+import { Button, ButtonIcon, Card, HomeIndicator, Icon, PriceTag, Radio, StatusBar, TitlePage } from '../../components';
 import { photos } from '../../assets/photos';
-import { MAIN_EVENT_ID, eventById, placeById, priceLabel, whenLabel, type EventItem } from '../../data/mock';
+import { eventById, placeById, priceLabel, ruDate, whenLabel, type EventItem } from '../../data/mock';
 import { ACTIVITIES, PERSONS, VENUES, personById, venueById } from '../../data/people';
-import { ticketEvent, useStore } from '../../data/store';
+import { TODAY, hasTicketOn, planPlaces, ticketEvent, useStore, waitingPlans } from '../../data/store';
+import { BottomSheet } from '../_shell/BottomSheet';
 import { EmptyState, NavBar, useClose } from '../_shell/app';
 import { Rail, Screen } from '../_shell/Screen';
 
@@ -139,22 +140,31 @@ export function Activity() {
   const place = placeById(id);
   const info = ACTIVITIES[id];
   const store = useStore();
+  const nav = useNavigate();
+  const [pick, setPick] = useState(false);
   const a = useDetailActions(`place:${id}`, place?.name ?? '');
   if (id === 'theatre') return <Navigate to="/event" replace />;
   if (!place || !info) return <NotFound what="Активность" />;
-  // День плана: из «Куда пойдём» (?date=), иначе — дата мероприятия, рядом с которым открыли активность (?event=)
-  const ev = eventById(params.get('event') ?? MAIN_EVENT_ID) ?? eventById(MAIN_EVENT_ID)!;
-  const date = params.get('date') ?? ev.dateISO;
-  const inPlan = (store.state.plans[date] ?? []).includes(id);
-  const hasTicket = store.state.tickets.some((t) => ticketEvent(t)?.dateISO === date);
-  const dayText = `${Number(date.slice(8))} ${date.slice(5, 7) === '05' ? 'мая' : 'апреля'}`;
-  const togglePlan = () => {
-    const prev = store.state.plans[date] ?? [];
-    const undo = { label: 'Отменить', onClick: () => store.setPlan(date, prev) };
-    if (inPlan) { store.removeFromPlan(date, id); store.toast(`Убрано из плана на ${dayText}`, 'info', undo); return; }
-    store.addToPlan(date, id);
-    store.toast(hasTicket ? `Добавлено в план на ${dayText}` : `Добавлено в план на ${dayText} — он появится в «Куда пойдём» после покупки билета`, 'success', undo);
+  // День плана: из «Куда пойдём» (?date=) или дата мероприятия, рядом с которым открыли место (?event=); без них (из «Избранного») — выбор плана в шторке
+  const ctxEvent = eventById(params.get('event') ?? '');
+  const date = params.get('date') ?? ctxEvent?.dateISO ?? null;
+  const inPlan = !!date && (store.state.plans[date] ?? []).includes(id);
+  const hasTicket = !!date && hasTicketOn(store.state, date);
+  const dayText = date ? ruDate(date) : '';
+  const count = date ? planPlaces(store.state.plans[date]).length : 0;
+  const add = (d: string, eventId?: string, ticket = hasTicketOn(store.state, d)) => {
+    const prev = store.state.plans[d] ?? [];
+    store.addToPlan(d, id, eventId);
+    store.toast(ticket ? `Добавлено в план на ${ruDate(d)}` : `${place.name} — в плане на ${ruDate(d)}`, 'success', { label: 'Отменить', onClick: () => store.setPlan(d, prev) });
   };
+  const togglePlan = () => {
+    if (!date) { setPick(true); return; }
+    if (inPlan) { const prev = store.state.plans[date] ?? []; store.removeFromPlan(date, id); store.toast(`Убрано из плана на ${dayText}`, 'info', { label: 'Отменить', onClick: () => store.setPlan(date, prev) }); return; }
+    add(date, ctxEvent?.id, hasTicket);
+  };
+  // нет билета на этот день — честно говорим, что будет: место в плане, останется купить билет
+  const hint = date && !hasTicket ? (inPlan ? `В плане на ${dayText} ${count} ${count === 1 ? 'место' : count < 5 ? 'места' : 'мест'}. Осталось купить билет.` : `У вас нет билета на ${dayText}. Место сохраним в план — останется купить билет.`) : null;
+  const label = inPlan ? 'Убрать из плана' : !date ? 'Добавить в план' : hasTicket ? 'Добавить в план дня' : `Добавить в план на ${dayText}`;
   return (
     <div style={{ position: 'relative', height: 'var(--app-height, 100dvh)', overflow: 'hidden', background: 'color-mix(in srgb, var(--color-static-black) 60%, transparent)' }}>
       <StatusBar theme="Dark" />
@@ -170,13 +180,51 @@ export function Activity() {
           </div>
         </div>
         <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, ...white, borderTop: '1px solid var(--color-background-disabled)' }}>
-          <div style={{ padding: 'var(--spacing-xl) var(--spacing-2xl)' }}>
-            <Button type={inPlan ? 'Tertiary' : 'Primary'} onClick={togglePlan}>{inPlan ? 'Убрать из плана дня' : 'Добавить в план дня'}</Button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', padding: 'var(--spacing-xl) var(--spacing-2xl)' }}>
+            {hint && <span className="ds-caption" style={{ color: 'var(--color-text-secondary)' }}>{hint}</span>}
+            <Button type={inPlan ? 'Tertiary' : 'Primary'} onClick={togglePlan}>{label}</Button>
           </div>
           <HomeIndicator />
         </div>
       </div>
+      {pick && <PlanPickSheet placeId={id} placeName={place.name} onClose={() => setPick(false)} onPick={(d, ev) => add(d, ev)} onChooseEvent={() => nav('/main')} />}
       <style>{'@keyframes bbSheetUp{from{transform:translateY(60px);opacity:.4}to{transform:none;opacity:1}}'}</style>
     </div>
+  );
+}
+
+/** «Добавить в план» без контекста мероприятия (из «Избранного»): дни с билетами и планы без билета. Ничего нет — «Выбрать мероприятие». */
+function PlanPickSheet({ placeId, placeName, onClose, onPick, onChooseEvent }: { placeId: string; placeName: string; onClose: () => void; onPick: (date: string, eventId?: string) => void; onChooseEvent: () => void }) {
+  const { state } = useStore();
+  const byDate = new Map<string, { date: string; title: string; sub: string; eventId?: string }>();
+  for (const t of state.tickets) { const e = ticketEvent(t); if (e && e.dateISO >= TODAY && !byDate.has(e.dateISO)) byDate.set(e.dateISO, { date: e.dateISO, title: e.title, sub: 'Билет есть', eventId: e.id }); }
+  for (const w of waitingPlans(state)) if (!byDate.has(w.date)) byDate.set(w.date, { date: w.date, title: w.event?.title ?? 'План дня', sub: 'Билета пока нет', eventId: w.event?.id });
+  const options = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  const [sel, setSel] = useState(options[0]?.date ?? null);
+  return (
+    <BottomSheet label="Добавить в план" style={{ padding: 'var(--spacing-sm) var(--spacing-2xl) var(--spacing-5xl)' }} onClose={onClose}>{(close) => (<>
+      <div style={{ display: 'flex', justifyContent: 'center' }}><span style={{ width: 37, height: 5, borderRadius: 'var(--radius-xs)', background: 'var(--color-background-placeholder)' }} /></div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', padding: 'var(--spacing-2xl) 0 var(--spacing-md)' }}>
+        <span className="ds-heading-h2">Добавить в план</span>
+        <span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>{options.length ? placeName : 'План дня собирается вокруг мероприятия — сначала выберите его'}</span>
+      </div>
+      {options.length ? <>
+        <div role="radiogroup" aria-label="День плана">
+          {options.map((o) => {
+            const already = (state.plans[o.date] ?? []).includes(placeId);
+            return (
+              <div key={o.date} role="presentation" onClick={() => !already && setSel(o.date)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xl)', padding: 'var(--spacing-lg) 0', cursor: already ? 'default' : 'pointer', opacity: already ? 'var(--opacity-disabled)' : 1 }}>
+                <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2xs)' }}>
+                  <span className="ds-subtitle" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ruDate(o.date)} · {o.title}</span>
+                  <span className="ds-caption" style={{ color: 'var(--color-text-secondary)' }}>{already ? 'Уже в этом плане' : o.sub}</span>
+                </span>
+                {!already && <Radio state={sel === o.date ? 'Active' : 'Default'} label={`${ruDate(o.date)} · ${o.title}`} onClick={() => setSel(o.date)} />}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ paddingTop: 'var(--spacing-xl)' }}><Button state={sel && !(state.plans[sel] ?? []).includes(placeId) ? 'Default' : 'Disabled'} disabled={!sel || (state.plans[sel] ?? []).includes(placeId)} onClick={() => close(() => { const o = byDate.get(sel!); onPick(sel!, o?.eventId); onClose(); })}>Добавить</Button></div>
+      </> : <div style={{ paddingTop: 'var(--spacing-xl)' }}><Button onClick={() => close(onChooseEvent)}>Выбрать мероприятие</Button></div>}
+    </>)}</BottomSheet>
   );
 }

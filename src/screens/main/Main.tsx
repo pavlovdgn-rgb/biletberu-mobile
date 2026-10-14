@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { BannerImage, ButtonTag, Card, DatepickerRange, HomeIndicator, Icon, LocationAndProfile, Search, StatusBar, Story as StoryCard, TextButtons, TitlePage } from '../../components';
+import { BannerImage, Button, ButtonTag, Card, DatepickerRange, HomeIndicator, Icon, LocationAndProfile, Search, StatusBar, Story as StoryCard, TextButtons, TitlePage } from '../../components';
 import { photos } from '../../assets/photos';
 import { BANNER_IDS, CATEGORIES, CATEGORY_MATCH, COLLECTION_IDS, EVENTS, INTEREST_IDS, STORIES, eventById, eventsWord, priceLabel, rub, weekday, whenLabel, type EventItem } from '../../data/mock';
-import { TODAY, applyFilters, ticketEvent, filtersActive, useStore } from '../../data/store';
+import { MAIN_EVENT_ID } from '../../data/mock';
+import { TODAY, applyFilters, ticketEvent, filtersActive, planReminder, useStore } from '../../data/store';
 import { BannerCarousel } from '../_shell/BannerCarousel';
 import { CalendarSheet, dateLabel } from '../filter/CalendarSheet';
 import { SearchPanel, norm } from './SearchPanel';
 import { VENUES } from '../../data/people';
-import { PlanPromptSheet } from './PlanPromptSheet';
 import { EmptyState, Loading, NavBar, useFirstLoad, useOpen } from '../_shell/app';
 import { Rail, Screen } from '../_shell/Screen';
 
@@ -20,7 +20,9 @@ const STORY_MATCH: Array<(e: EventItem) => boolean> = [CATEGORY_MATCH['Конц�
 export function Main() {
   const nav = useNavigate();
   const openModal = useOpen();
-  const { state, toggleFavourite, toast, resetFilters, dismissPlanPrompt } = useStore();
+  const { state, toggleFavourite, toast, resetFilters, hideReminder } = useStore();
+  // напоминание спланировать день: за 7 дней до события, если план пуст (Figma: Main — plan reminder `449:3163`) — карточка в ленте, не шторка
+  const reminder = planReminder(state);
   const ready = useFirstLoad('main');
   const [collapsed, setCollapsed] = useState(false);
   const [query, setQuery] = useState('');
@@ -101,8 +103,7 @@ export function Main() {
         onVenue={(id) => { setSearching(false); openModal(`/venue?id=${id}`); }}
         onPerson={(id) => { setSearching(false); openModal(`/person?id=${id}`); }} />)
         || (cal && <CalendarSheet value={day} ticketDays={[...new Set(state.tickets.map((t) => ticketEvent(t)?.dateISO).filter((d): d is string => !!d))]}
-        actionLabel={(v) => `Показать события ${dateLabel(v)}`} onClose={() => setCal(false)} onApply={(v) => { setDay(v); setCal(false); }} />)
-        || (state.planPrompt && <PlanPromptSheet eventId={state.planPrompt.eventId} dateISO={state.planPrompt.dateISO} onClose={dismissPlanPrompt} onPlan={(d) => { dismissPlanPrompt(); nav(`/plan?date=${d}`); }} />)}
+        actionLabel={(v) => `Показать события ${dateLabel(v)}`} onClose={() => setCal(false)} onApply={(v) => { setDay(v); setCal(false); }} />)}
       header={<div className="bb-surface-head">
         <StatusBar />
         <div style={{ background: 'var(--color-base-white)', borderRadius: '0 0 var(--radius-2xl) var(--radius-2xl)', paddingBottom: 'var(--spacing-3xl)', paddingTop: collapsed ? 'var(--spacing-md)' : 0, transition: 'padding-top 220ms var(--motion-ease)' }}>
@@ -135,6 +136,7 @@ export function Main() {
         </section>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', paddingTop: 'var(--spacing-xl)' }}>
+          {reminder && <PlanReminder event={reminder.event} days={reminder.days} onPlan={() => nav(`/plan?date=${reminder.event.dateISO}`, { state: { tab: true } })} onHide={() => hideReminder(`${reminder.event.id}@${reminder.event.dateISO}`)} />}
           <section style={{ ...section, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2xl)', padding: 'var(--spacing-4xl) 0 var(--spacing-2xl)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3xl)' }}>
               <Rail>{STORIES.map((t, i) => <StoryCard key={t} title={t} src={photos[`story-${i}`]} onClick={() => openModal(`/story?i=${i}`)} />)}</Rail>
@@ -163,5 +165,30 @@ export function Main() {
         </div>
       )}
     </Screen>
+  );
+}
+
+const KIND_WORD: Record<string, string> = {
+  'Театр': 'Спектакль', 'Иммерсивный театр': 'Спектакль', 'Детский спектакль': 'Спектакль', 'Мюзикл': 'Мюзикл', 'Балет': 'Балет', 'Опера': 'Опера',
+  'Концерт': 'Концерт', 'Джаз': 'Концерт', 'Рок': 'Концерт', 'Классическая музыка': 'Концерт', 'Электронная музыка': 'Концерт',
+  'Выставка': 'Выставка', 'Музеи': 'Выставка', 'Экскурсия': 'Экскурсия', 'Лекция': 'Лекция', 'Семинар': 'Семинар', 'Мастер-класс': 'Мастер-класс',
+  'Шоу': 'Шоу', 'Стендап': 'Стендап', 'Кинопоказ': 'Кинопоказ', 'Квест': 'Квест', 'Фестиваль': 'Фестиваль', 'Ярмарка': 'Ярмарка', 'Спорт': 'Матч',
+};
+/** Напоминание «Спланировать день» на главной: светлая карточка, крестик — отдельно в углу, действие — серая кнопка во всю ширину. */
+function PlanReminder({ event, days, onPlan, onHide }: { event: EventItem; days: number; onPlan: () => void; onHide: () => void }) {
+  const when = days === 0 ? 'сегодня' : days === 1 ? 'завтра' : `через ${days} ${days < 5 ? 'дня' : 'дней'}`;
+  const what = KIND_WORD[event.kind] ?? 'Событие';
+  return (
+    <section style={{ ...section, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', margin: '0 var(--spacing-2xl)', padding: 'var(--spacing-2xl)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-xl)' }}>
+        <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 'var(--radius-pill)', background: 'var(--color-accent-violet-10)', color: 'var(--color-accent-violet)' }}><Icon name="route" size={20} /></span>
+        <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2xs)' }}>
+          <span className="ds-caption" style={{ color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{what} {when} · {event.title}</span>
+          <span className="ds-subtitle">Спланировать день рядом с {event.id === MAIN_EVENT_ID ? 'театром' : 'площадкой'}?</span>
+        </span>
+        <button type="button" aria-label="Скрыть напоминание" onClick={onHide} style={{ display: 'inline-flex', padding: 0, border: 0, background: 'transparent', color: 'var(--color-text-secondary)', cursor: 'pointer' }}><Icon name="x-close" size={20} /></button>
+      </div>
+      <Button type="Secondary" size="Sm" onClick={onPlan}>Спланировать день</Button>
+    </section>
   );
 }

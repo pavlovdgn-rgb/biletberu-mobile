@@ -1,7 +1,8 @@
 import { useLocation, useNavigate } from 'react-router';
-import { Button, HomeIndicator, Icon, StatusBar, TitlePage } from '../../components';
-import { SERVICE_FEE, rub } from '../../data/mock';
-import { useStore } from '../../data/store';
+import { Button, HomeIndicator, Icon, Image, StatusBar, TitlePage } from '../../components';
+import { photos } from '../../assets/photos';
+import { MAIN_EVENT_ID, SERVICE_FEE, eventGeo, placesNear, rub, ruDate } from '../../data/mock';
+import { planPlaces, ticketEvent, useStore } from '../../data/store';
 
 /** Done — оплата прошла успешно (Figma `180:16409`). Итог — из только что оплаченного заказа (или последнего в «Моих билетах»). */
 export function Done() {
@@ -10,10 +11,16 @@ export function Done() {
   const { state } = useStore();
   const last = state.tickets.filter((t) => t.orderId === state.tickets[0]?.orderId);
   const paid = (loc.state as { count?: number; total?: number } | null) ?? { count: last.length, total: last.reduce((a, t) => a + t.price + SERVICE_FEE, 0) };
+  // предложение спланировать день — внутри экрана, не шторкой (Figma: Done — plan prompt `444:42326`); план уже есть (перенесён из «без билета») — плашка
+  const ev = last[0] && ticketEvent(last[0]);
+  const inPlan = ev ? planPlaces(state.plans[ev.dateISO]).length : 0;
+  const geo = ev && eventGeo(ev.id);
+  const near = geo ? placesNear(geo, ev!.id === MAIN_EVENT_ID).sort((a, b) => a.meters - b.meters).slice(0, 3) : [];
+  const prompt = !!ev && inPlan === 0 && state.planPromptEnabled && near.length > 0;
   return (
-    <div style={{ width: '100%', maxWidth: 430, minHeight: 'var(--app-height, 100dvh)', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--color-background-base)' }}>
+    <div style={{ width: '100%', maxWidth: 430, height: 'var(--app-height, 100dvh)', overflowY: 'auto', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--color-background-base)' }}>
       <StatusBar /><TitlePage title="Оплата заказа" onLeft={() => nav('/main')} />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 'var(--spacing-5xl)', marginTop: 'var(--spacing-xl)', padding: '96px var(--spacing-2xl) var(--spacing-5xl)', background: 'var(--color-base-white)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 'var(--spacing-5xl)', marginTop: 'var(--spacing-xl)', padding: `${prompt || inPlan ? 'var(--spacing-5xl)' : '96px'} var(--spacing-2xl) var(--spacing-5xl)`, background: 'var(--color-base-white)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-5xl)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-5xl)', textAlign: 'center' }}>
             <span style={{ display: 'inline-flex', borderRadius: 'var(--radius-pill)', background: 'var(--color-base-white)', boxShadow: '0 0 60px 30px color-mix(in srgb, var(--illustration-success-check) 12%, transparent)' }}><svg width="104" height="104" viewBox="0 0 104 104" aria-hidden fill="var(--illustration-success-check)">
@@ -25,6 +32,33 @@ export function Done() {
               <span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>Ваши билеты готовы к использованию</span>
             </div>
           </div>
+          {ev && inPlan > 0 && (
+            <button type="button" onClick={() => nav(`/plan?date=${ev.dateISO}`, { replace: true, state: { tab: true } })} style={{ display: 'flex', gap: 'var(--spacing-xl)', alignItems: 'flex-start', padding: 'var(--spacing-xl) var(--spacing-2xl)', border: 0, borderRadius: 'var(--radius-md)', background: 'var(--color-accent-violet-10)', color: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
+              <Icon name="route" size={20} style={{ color: 'var(--color-accent-violet)' }} />
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
+                <span className="ds-body">{inPlan} {inPlan === 1 ? 'место уже в плане' : inPlan < 5 ? 'места уже в плане' : 'мест уже в плане'} на {ruDate(ev.dateISO)}</span>
+                <span className="ds-note" style={{ color: 'var(--color-accent-violet)' }}>Открыть план дня</span>
+              </span>
+            </button>
+          )}
+          {prompt && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', padding: 'var(--spacing-2xl)', borderRadius: 'var(--radius-md)', background: 'var(--color-background-base)' }}>
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
+                <span className="ds-heading-h3">Спланируем {ruDate(ev!.dateISO)}?</span>
+                <span className="ds-caption" style={{ color: 'var(--color-text-secondary)' }}>Кафе и прогулки рядом — до и после события</span>
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--spacing-md)' }}>
+                {near.map((p) => (
+                  <span key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', minWidth: 0 }}>
+                    <Image size="sm" src={photos[p.image]} style={{ width: '100%', height: 80 }} />
+                    <span className="ds-caption" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                    <span className="ds-caption" style={{ color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.time}</span>
+                  </span>
+                ))}
+              </div>
+              <Button onClick={() => nav(`/plan?date=${ev!.dateISO}`, { replace: true, state: { tab: true } })}>Спланировать день</Button>
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>
             <div style={{ padding: 'var(--spacing-4xl) var(--spacing-2xl)', borderRadius: 'var(--radius-md)', background: 'var(--color-background-base)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 'var(--spacing-2xl)', borderBottom: '1px solid var(--color-background-disabled)' }}><span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>Количество билетов</span><span className="ds-subtitle">{paid.count}</span></div>
@@ -37,7 +71,7 @@ export function Done() {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-4xl)' }}>
-          <Button content="Icon" onClick={() => {
+          <Button content="Icon" type={prompt ? 'Secondary' : 'Primary'} onClick={() => {
             // экран успеха заменяем списком «Мои билеты», поверх — билеты купленного события: «назад» с билета ведёт в список, а не к оплате
             nav('/tickets', { replace: true, state: { tab: true } });
             if (last[0]) nav(`/ticket?event=${last[0].eventId}`);
