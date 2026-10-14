@@ -3,17 +3,34 @@ import { useLocation, useNavigate, useNavigationType, type Location } from 'reac
 import { Bar, Button, Icon, Spinner, type IconName } from '../../components';
 import { useStore } from '../../data/store';
 
-/** Вкладки таббара → маршруты. «Куда пойдём» ведёт в план, если есть билет, иначе в пустое состояние. */
+/** Стек экранов каждой вкладки (как в iOS): главная → мероприятие → …; при возврате на вкладку открывается её последний экран.
+ *  Хранится в памяти на время сессии; модальные шторки (персона, площадка, активность…) в стек не попадают. */
+const tabStacks: string[][] = [[], [], [], []];
+const tabRoots = (hasTickets: boolean) => ['/main', hasTickets ? '/plan' : '/no-ticket', '/favourites', '/tickets'];
+
+/** Вкладки таббара → маршруты. «Куда пойдём» ведёт в план, если есть билет, иначе в пустое состояние.
+ *  Другая вкладка — её последний экран (стек восстанавливается, «Назад» идёт по нему); активная вкладка на вложенном экране — в корень. */
 export function NavBar({ active }: { active: number }) {
   const nav = useNavigate();
   const { state } = useStore();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const roots = tabRoots(state.tickets.length > 0);
+  const here = pathname + search;
+  useEffect(() => {
+    if (MODAL_PATHS.some((m) => pathname.startsWith(m))) return;
+    const st = tabStacks[active];
+    if (pathname === roots[active] || pathname === '/plan' || pathname === '/no-ticket') { tabStacks[active] = [here]; return; }
+    const at = st.indexOf(here);
+    tabStacks[active] = at >= 0 ? st.slice(0, at + 1) : [...(st.length ? st : [roots[active]]), here];
+  }, [active, here, pathname, roots]);
   const go = (i: number) => {
-    const root = [`/main`, state.tickets.length ? '/plan' : '/no-ticket', '/favourites', '/tickets'][i];
-    // активная вкладка: уже в корне раздела — ничего; на вложенном экране (билет, мероприятие) — в корень, как в iOS
-    if (i === active && pathname === root) return;
-    // вкладки таббара переключаются мгновенно, как в iOS — без анимации появления экрана (иначе экран вместе с таббаром «прыгает»)
-    nav(root, { state: { tab: true } });
+    const root = roots[i];
+    // вкладки переключаются мгновенно, как в iOS — без анимации появления экрана (иначе экран вместе с таббаром «прыгает»)
+    const opts = { state: { tab: true } };
+    if (i === active) { if (pathname !== root) { tabStacks[i] = [root]; nav(root, opts); } return; }
+    // корень «Куда пойдём» зависит от билетов — сохранённый стек с другим корнем не восстанавливаем
+    const stack = tabStacks[i][0]?.split('?')[0] === root ? tabStacks[i] : [root];
+    stack.forEach((path) => nav(path, opts));
   };
   return <Bar active={active} onChange={go} />;
 }
