@@ -37,6 +37,7 @@
   --color-background-inverse: var(--palette-gray-950);
   --color-background-info: var(--palette-blue-50);
   --color-background-header: var(--palette-white);
+  --color-background-selected: var(--palette-white);
   --color-border-tertiary: var(--palette-gray-950);
 
   /* Подписи на карте (color/map/label · label-strong · label-halo) */
@@ -86,6 +87,7 @@
   --color-background-inverse: var(--palette-dark-800);
   --color-background-info: var(--palette-blue-dark);
   --color-background-header: var(--palette-dark-950);
+  --color-background-selected: var(--palette-dark-750);
   --color-border-tertiary: var(--palette-dark-500);
 
   --shadow-sm: 0 0 6px 0 rgb(0 0 0 / 0.4);
