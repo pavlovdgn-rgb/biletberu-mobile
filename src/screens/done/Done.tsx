@@ -32,6 +32,22 @@ export function Done() {
               <span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>Ваши билеты готовы к использованию</span>
             </div>
           </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>
+            <div style={{ padding: 'var(--spacing-4xl) var(--spacing-2xl)', borderRadius: 'var(--radius-md)', background: 'var(--color-background-base)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 'var(--spacing-2xl)', borderBottom: '1px solid var(--color-background-disabled)' }}><span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>Количество билетов</span><span className="ds-subtitle">{paid.count}</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 'var(--spacing-2xl)' }}><span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>Сумма оплаты</span><span className="ds-subtitle">{rub(paid.total ?? 0)}</span></div>
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--spacing-md)', padding: 'var(--spacing-2xl)', borderRadius: 'var(--radius-sm)' }}>
+              <Icon name="info-circle" size={20} />
+              <span className="ds-body">Билеты сохранены в приложении, вы можете увидеть их разделе «Билеты»</span>
+            </div>
+            {/* 15.10: главное действие экрана покупки — доступ к билету; план дня — вторым слоем ниже */}
+            <Button content="Icon" onClick={() => {
+              // экран успеха заменяем списком «Мои билеты», поверх — билеты купленного события: «назад» с билета ведёт в список, а не к оплате
+              nav('/tickets', { replace: true, state: { tab: true } });
+              if (last[0]) nav(`/ticket?event=${last[0].eventId}`);
+            }}>Посмотреть билеты</Button>
+          </div>
           {ev && inPlan > 0 && (
             <button type="button" onClick={() => nav(`/plan?date=${ev.dateISO}`, { replace: true, state: { tab: true } })} style={{ display: 'flex', gap: 'var(--spacing-xl)', alignItems: 'flex-start', padding: 'var(--spacing-xl) var(--spacing-2xl)', border: 0, borderRadius: 'var(--radius-md)', background: 'var(--color-accent-violet-10)', color: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
               <Icon name="route" size={20} style={{ color: 'var(--color-accent-violet)' }} />
@@ -56,26 +72,11 @@ export function Done() {
                   </span>
                 ))}
               </div>
-              <Button onClick={() => nav(`/plan?date=${ev!.dateISO}`, { replace: true, state: { tab: true } })}>Спланировать день</Button>
+              <Button type="Tertiary" onClick={() => nav(`/plan?date=${ev!.dateISO}`, { replace: true, state: { tab: true } })}>Спланировать день</Button>
             </div>
           )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>
-            <div style={{ padding: 'var(--spacing-4xl) var(--spacing-2xl)', borderRadius: 'var(--radius-md)', background: 'var(--color-background-base)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 'var(--spacing-2xl)', borderBottom: '1px solid var(--color-background-disabled)' }}><span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>Количество билетов</span><span className="ds-subtitle">{paid.count}</span></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 'var(--spacing-2xl)' }}><span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>Сумма оплаты</span><span className="ds-subtitle">{rub(paid.total ?? 0)}</span></div>
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--spacing-md)', padding: 'var(--spacing-2xl)', borderRadius: 'var(--radius-sm)' }}>
-              <Icon name="info-circle" size={20} />
-              <span className="ds-body">Билеты сохранены в приложении, вы можете увидеть их разделе «Билеты»</span>
-            </div>
-          </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-4xl)' }}>
-          <Button content="Icon" type={prompt ? 'Secondary' : 'Primary'} onClick={() => {
-            // экран успеха заменяем списком «Мои билеты», поверх — билеты купленного события: «назад» с билета ведёт в список, а не к оплате
-            nav('/tickets', { replace: true, state: { tab: true } });
-            if (last[0]) nav(`/ticket?event=${last[0].eventId}`);
-          }}>Посмотреть билеты</Button>
           <button type="button" className="ds-note" onClick={() => nav('/main', { replace: true })} style={{ border: 0, padding: 0, background: 'transparent', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>Вернуться на главную</button>
         </div>
       </div>
