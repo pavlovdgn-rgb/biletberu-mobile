@@ -1,14 +1,19 @@
 .uxlab-study {
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
   position: relative;
   z-index: 10;
   width: min(100%, 430px);
   height: var(--uxlab-taskbar-height);
+  border-bottom: 1px solid var(--color-border-tertiary, #222);
   margin: 0 auto;
   background: var(--color-background-secondary);
   font: 500 14px/1.4 Inter, system-ui, sans-serif;
 }
 
 .uxlab-study button {
+  box-sizing: border-box;
   font: inherit;
   cursor: pointer;
 }
@@ -45,22 +50,74 @@
 
 .uxlab-study-open {
   display: flex;
+  flex: 1;
+  min-width: 0;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
+  gap: 6px;
   height: 100%;
   border: 0;
-  border-bottom: 1px solid var(--color-border-tertiary, #222);
   border-radius: 0;
-  padding: 0 16px;
+  padding: 0 8px;
+  text-align: left;
   color: var(--color-text-primary, #171717);
   background: transparent;
 }
 
-.uxlab-study-open::after {
-  content: 'Открыть ›';
+.uxlab-study-count {
+  flex-shrink: 0;
   color: var(--color-primary-orange);
   font-weight: 700;
+  font-size: 12px;
+}
+
+.uxlab-study-goal {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 12px;
+  line-height: 15px;
+}
+
+.uxlab-study .uxlab-study-skip {
+  flex-shrink: 0;
+  min-width: 78px;
+  height: 100%;
+  padding: 0 8px;
+  border: 0;
+  border-inline-start: 1px solid var(--color-border-tertiary, #222);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-primary-orange);
+  font-size: 12px;
+}
+
+.uxlab-study-skip:disabled {
+  color: var(--color-text-secondary);
+  cursor: wait;
+}
+
+.uxlab-study-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.uxlab-study[data-task-changed] .uxlab-study-open {
+  animation: uxlab-task-change 900ms ease-out;
+}
+
+@keyframes uxlab-task-change {
+  from { background: var(--color-primary-orange-10); }
+  to { background: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uxlab-study[data-task-changed] .uxlab-study-open { animation: none; background: var(--color-primary-orange-10); }
 }
 
 .uxlab-study-dialog {
@@ -80,7 +137,6 @@
   background: #0008;
 }
 
-.uxlab-study-caption,
 .uxlab-study-status {
   color: var(--color-text-secondary, #666);
   font-size: 13px;

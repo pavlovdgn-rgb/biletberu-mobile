@@ -76,9 +76,11 @@ export function installMobileStudyCollector(){
   let queue:Pending[]=[];try{queue=JSON.parse(sessionStorage.getItem(queueKey)||'[]') as Pending[];}catch{/* A corrupt tab queue starts empty. */}
   let enabled=false,clicks=false,visits=false,busy=false,lastPage='';
   let policy:Policy|null=null,run:Run|null=null,panel:HTMLElement|null=null,dialog:HTMLDialogElement|null=null,shownTask='',completionDismissed=false;
+  let highlightTimer:ReturnType<typeof setTimeout>|undefined;
   const bodyStyle=document.body.style;
   const previousLayout={height:bodyStyle.getPropertyValue('--app-height'),bar:bodyStyle.getPropertyValue('--uxlab-taskbar-height'),overflow:bodyStyle.overflow};
   const clearTaskbar=()=>{
+    clearTimeout(highlightTimer);
     if(dialog?.open)dialog.close();panel?.remove();panel=null;dialog=null;shownTask='';
     for(const [name,value] of [['--app-height',previousLayout.height],['--uxlab-taskbar-height',previousLayout.bar]]){
       if(value)bodyStyle.setProperty(name,value);else bodyStyle.removeProperty(name);
@@ -112,17 +114,22 @@ export function installMobileStudyCollector(){
     if(value)data.value=value;if(label)data.label=label.slice(0,200);
     queue.push({kind:'task',data});persist();void tick();
   };
+  const skipTask=()=>{
+    if(run?.activeTaskId&&!queue.some(item=>item.kind==='task'&&item.data.taskId===run?.activeTaskId&&['finished','skipped'].includes(item.data.kind)))taskEvent('skipped');
+    renderTask();
+  };
   const renderTask=()=>{
     if(!enabled||policy?.mode!=='scenario'||!policy.tasks?.length||completionDismissed){if(panel)clearTaskbar();return;}
     const completed=Boolean(run&&!run.activeTaskId);
     if(!panel){
       panel=document.createElement('aside');panel.className='uxlab-study';panel.dataset.uxlabOverlay='true';panel.dataset.uxlabTaskbar='true';
-      panel.innerHTML='<button type="button" class="uxlab-study-open">Задание</button><dialog class="uxlab-study-dialog" aria-label="Задание исследования"><p class="uxlab-study-caption"></p><h2 class="uxlab-study-title"></h2><p class="uxlab-study-instruction"></p><p class="uxlab-study-status" role="status"></p><div class="uxlab-study-actions"><button type="button" class="uxlab-study-finish">Завершить задание</button><button type="button" class="uxlab-study-close">К приложению</button></div></dialog>';
+      panel.innerHTML='<button type="button" class="uxlab-study-open" aria-haspopup="dialog"><span class="uxlab-study-count"></span><span class="uxlab-study-goal">Загрузка задания…</span></button><button type="button" class="uxlab-study-skip">Пропустить</button><span class="uxlab-study-announcement" role="status" aria-live="polite" aria-atomic="true"></span><dialog class="uxlab-study-dialog" aria-label="Задание исследования"><h2 class="uxlab-study-title"></h2><p class="uxlab-study-instruction"></p><p class="uxlab-study-status" role="status"></p><div class="uxlab-study-actions"><button type="button" class="uxlab-study-finish">Завершить задание</button><button type="button" class="uxlab-study-close">К приложению</button></div></dialog>';
       bodyStyle.setProperty('--uxlab-taskbar-height','40px');
       bodyStyle.setProperty('--app-height','calc(100dvh - var(--uxlab-taskbar-height))');
       bodyStyle.overflow='hidden';
       document.body.insertBefore(panel,document.getElementById('root'));dialog=panel.querySelector('dialog');
       panel.querySelector('.uxlab-study-open')?.addEventListener('click',()=>dialog?.showModal());
+      panel.querySelector('.uxlab-study-skip')?.addEventListener('click',skipTask);
       panel.querySelector('.uxlab-study-close')?.addEventListener('click',()=>{dialog?.close();if(run&&!run.activeTaskId){completionDismissed=true;clearTaskbar();}});
       panel.querySelector('.uxlab-study-finish')?.addEventListener('click',()=>{
         const attempt=run?.tasks.find(item=>item.taskId===run?.activeTaskId);
@@ -137,9 +144,10 @@ export function installMobileStudyCollector(){
     const ordinal=attempt?.ordinal??0,total=run?.totalTasks||policy.tasks.length;
     if(completed&&run){
       const succeeded=run.tasks.filter(task=>task.status==='succeeded').length,skipped=run.tasks.filter(task=>task.status==='skipped').length;
-      panel.querySelector('.uxlab-study-open')!.textContent='Тест завершён';
+      panel.querySelector('.uxlab-study-count')!.textContent='';
+      panel.querySelector('.uxlab-study-goal')!.textContent='Тест завершён';
       panel.querySelector('.uxlab-study-open')!.setAttribute('aria-label','Открыть результаты прохождения');
-      panel.querySelector('.uxlab-study-caption')!.textContent=policy.studyTitle;
+      (panel.querySelector('.uxlab-study-skip') as HTMLButtonElement).hidden=true;
       panel.querySelector('.uxlab-study-title')!.textContent='Спасибо за участие!';
       panel.querySelector('.uxlab-study-instruction')!.textContent=`Все ${total} заданий пройдены. Результаты сохранены.`;
       panel.querySelector('.uxlab-study-status')!.textContent=`Выполнено ${succeeded} из ${total}`+(skipped?` · Пропущено ${skipped}`:'');
@@ -147,9 +155,9 @@ export function installMobileStudyCollector(){
       if(shownTask!=='complete'){shownTask='complete';if(!dialog?.open)dialog?.showModal();}
       return;
     }
-    panel.querySelector('.uxlab-study-open')!.textContent=`Задание ${ordinal+1}/${total}`;
-    panel.querySelector('.uxlab-study-open')!.setAttribute('aria-label',`Открыть задание ${ordinal+1} из ${total}`);
-    panel.querySelector('.uxlab-study-caption')!.textContent=policy.studyTitle;
+    panel.querySelector('.uxlab-study-count')!.textContent=`${ordinal+1}/${total}`;
+    panel.querySelector('.uxlab-study-goal')!.textContent=title;
+    panel.querySelector('.uxlab-study-open')!.setAttribute('aria-label',`Задание ${ordinal+1} из ${total}: ${title}. Открыть подробности`);
     panel.querySelector('.uxlab-study-title')!.textContent=title;
     panel.querySelector('.uxlab-study-instruction')!.textContent=instruction;
     const automatic=(attempt?.verification??fallback.verification)?.method==='automatic';
@@ -159,8 +167,22 @@ export function installMobileStudyCollector(){
     finish.textContent=automatic?'Пропустить':'Завершить задание';
     finish.hidden=!run?.activeTaskId;
     finish.disabled=pending;
+    const skip=panel.querySelector('.uxlab-study-skip') as HTMLButtonElement;
+    skip.hidden=false;
+    skip.disabled=!run?.activeTaskId||pending;
+    skip.textContent=pending?'Сохраняем…':'Пропустить';
     const key=attempt?`${attempt.taskId}:${attempt.revision}`:fallback.id;
-    if(key!==shownTask){shownTask=key;if(!dialog?.open)dialog?.showModal();}
+    if(key!==shownTask){
+      const previous=shownTask;shownTask=key;
+      if(dialog?.open)dialog.close();
+      panel.querySelector('.uxlab-study-announcement')!.textContent=`Задание ${ordinal+1} из ${total}. ${title}`;
+      if(previous){
+        const currentPanel=panel;
+        clearTimeout(highlightTimer);
+        currentPanel.removeAttribute('data-task-changed');
+        requestAnimationFrame(()=>{currentPanel.dataset.taskChanged='true';highlightTimer=setTimeout(()=>currentPanel.removeAttribute('data-task-changed'),900);});
+      }
+    }
   };
   const recordVisit=()=>{
     const current=page();if(!enabled||!current||current===lastPage)return;
