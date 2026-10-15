@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { Button, ButtonIcon, Card, HomeIndicator, Icon, PriceTag, Radio, StatusBar, TitlePage } from '../../components';
 import { photos } from '../../assets/photos';
-import { eventById, placeById, priceLabel, ruDate, whenLabel, type EventItem } from '../../data/mock';
+import { eventById, placeById, priceLabel, ruDate, whenLabel, eventGeo, placesNear, MAIN_EVENT_ID, type EventItem } from '../../data/mock';
+import { emitStudySignal } from '../../uxStudySignals';
 import { ACTIVITIES, PERSONS, VENUES, personById, venueById } from '../../data/people';
 import { TODAY, hasTicketOn, ticketEvent, useStore } from '../../data/store';
 import { BottomSheet } from '../_shell/BottomSheet';
@@ -143,6 +144,11 @@ export function Activity() {
   const nav = useNavigate();
   const [pick, setPick] = useState(false);
   const a = useDetailActions(`place:${id}`, place?.name ?? '');
+  const nearbyEvent = params.get('event');
+  useEffect(() => {
+    const at = nearbyEvent ? eventGeo(nearbyEvent) : null;
+    if (at && place && info && placesNear(at, nearbyEvent === MAIN_EVENT_ID).some(item => item.id === id)) emitStudySignal('nearby_activity_opened');
+  }, [id, nearbyEvent, place, info]);
   if (id === 'theatre') return <Navigate to="/event" replace />;
   if (!place || !info) return <NotFound what="Активность" />;
   // День плана: из «Куда пойдём» (?date=) или дата мероприятия, рядом с которым открыли место (?event=); без них (из «Избранного») — выбор плана в шторке

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { EVENTS, MAIN_EVENT_ID, PLACE_GEO, addDaysISO, eventGeo, ruDate, sessionEvent, type Session, SEAT_PRICES, SEAT_ZONES, SERVICE_FEE, eventById, placeById, type EventItem, type Place } from './mock';
+import { committedStudySignals, emitStudySignal } from '../uxStudySignals';
 
 /** Единый слой мок-данных: экраны читают состояние и меняют его действиями. Сохраняется в браузере (демо), без бэкенда. */
 
@@ -93,6 +94,11 @@ export type Toast = { id: number; text: string; kind: 'info' | 'success' | 'erro
 
 function useStoreValue() {
   const [s, set] = useState<State>(load);
+  const observed = useRef(s);
+  useEffect(() => {
+    const before = observed.current; observed.current = s;
+    for (const signal of committedStudySignals(before, s, id => eventById(id)?.kind === 'Театр')) emitStudySignal(signal);
+  }, [s]);
   const cur = useRef(s); cur.current = s;
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* приватный режим — живём без сохранения */ } }, [s]);
   const [toasts, setToasts] = useState<Toast[]>([]);
