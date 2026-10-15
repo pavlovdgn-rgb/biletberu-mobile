@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { emitStudySignal } from '../../uxStudySignals';
 import { Button, HomeIndicator, Icon, Image, StatusBar, TitlePage } from '../../components';
 import { photos } from '../../assets/photos';
 import { MAIN_EVENT_ID, SERVICE_FEE, eventGeo, placesNear, rub, ruDate } from '../../data/mock';
@@ -13,6 +15,12 @@ export function Done() {
   const paid = (loc.state as { count?: number; total?: number } | null) ?? { count: last.length, total: last.reduce((a, t) => a + t.price + SERVICE_FEE, 0) };
   // предложение спланировать день — внутри экрана, не шторкой (Figma: Done — plan prompt `444:42326`); план уже есть (перенесён из «без билета») — плашка
   const ev = last[0] && ticketEvent(last[0]);
+  const orderId = last[0]?.orderId;
+  useEffect(() => {
+    // Older assigned task snapshots use this event. Emit only once the shared
+    // success screen is mounted, for every visual variation of that screen.
+    if (orderId && last.length === 2 && paid.count === 2 && ev?.kind === 'Театр' && last.every(ticket => ticket.eventId === last[0].eventId)) emitStudySignal('two_theatre_tickets_purchased');
+  }, [orderId, last.length, paid.count, ev?.kind]);
   const inPlan = ev ? planPlaces(state.plans[ev.dateISO]).length : 0;
   const geo = ev && eventGeo(ev.id);
   const near = geo ? placesNear(geo, ev!.id === MAIN_EVENT_ID).sort((a, b) => a.meters - b.meters).slice(0, 3) : [];

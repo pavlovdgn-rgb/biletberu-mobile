@@ -97,7 +97,7 @@ function useStoreValue() {
   const observed = useRef(s);
   useEffect(() => {
     const before = observed.current; observed.current = s;
-    for (const signal of committedStudySignals(before, s, id => eventById(id)?.kind === 'Театр')) emitStudySignal(signal);
+    for (const signal of committedStudySignals(before, s)) emitStudySignal(signal);
   }, [s]);
   const cur = useRef(s); cur.current = s;
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* приватный режим — живём без сохранения */ } }, [s]);
