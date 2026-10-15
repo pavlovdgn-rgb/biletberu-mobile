@@ -150,6 +150,7 @@ export function installMobileStudyCollector(){
       (panel.querySelector('.uxlab-study-skip') as HTMLButtonElement).hidden=true;
       panel.querySelector('.uxlab-study-title')!.textContent='Спасибо за участие!';
       panel.querySelector('.uxlab-study-instruction')!.textContent=`Все ${total} заданий пройдены. Результаты сохранены.`;
+      (panel.querySelector('.uxlab-study-instruction') as HTMLElement).hidden=false;
       panel.querySelector('.uxlab-study-status')!.textContent=`Выполнено ${succeeded} из ${total}`+(skipped?` · Пропущено ${skipped}`:'');
       (panel.querySelector('.uxlab-study-finish') as HTMLButtonElement).hidden=true;
       if(shownTask!=='complete'){shownTask='complete';if(!dialog?.open)dialog?.showModal();}
@@ -160,6 +161,7 @@ export function installMobileStudyCollector(){
     panel.querySelector('.uxlab-study-open')!.setAttribute('aria-label',`Задание ${ordinal+1} из ${total}: ${title}. Открыть подробности`);
     panel.querySelector('.uxlab-study-title')!.textContent=title;
     panel.querySelector('.uxlab-study-instruction')!.textContent=instruction;
+    (panel.querySelector('.uxlab-study-instruction') as HTMLElement).hidden=instruction.trim().replace(/\s+/g,' ')===title.trim().replace(/\s+/g,' ');
     const automatic=(attempt?.verification??fallback.verification)?.method==='automatic';
     const pending=queue.some(item=>item.kind==='task'&&item.data.taskId===run?.activeTaskId&&['finished','skipped'].includes(item.data.kind));
     panel.querySelector('.uxlab-study-status')!.textContent=pending?'Сохраняем переход. Если нет связи, повторим автоматически…':!run?'Загрузка задания…':automatic?'Задание завершится автоматически, когда вы выполните действие.':`Завершено ${run.finishedTasks} из ${total}`;
