@@ -5,7 +5,7 @@ import { photos } from '../../assets/photos';
 import { eventById, placeById, priceLabel, ruDate, whenLabel, eventGeo, placesNear, MAIN_EVENT_ID, type EventItem } from '../../data/mock';
 import { emitStudySignal } from '../../uxStudySignals';
 import { ACTIVITIES, PERSONS, VENUES, personById, venueById } from '../../data/people';
-import { TODAY, hasTicketOn, ticketEvent, useStore } from '../../data/store';
+import { TODAY, eventDay, hasTicketOn, ticketEvent, useStore } from '../../data/store';
 import { BottomSheet } from '../_shell/BottomSheet';
 import { EmptyState, NavBar, useClose } from '../_shell/app';
 import { Rail, Screen } from '../_shell/Screen';
@@ -153,7 +153,8 @@ export function Activity() {
   if (!place || !info) return <NotFound what="Активность" />;
   // День плана: из «Куда пойдём» (?date=) или дата мероприятия, рядом с которым открыли место (?event=); без них (из «Избранного») — выбор плана в шторке
   const ctxEvent = eventById(params.get('event') ?? '');
-  const date = params.get('date') ?? ctxEvent?.dateISO ?? null;
+  // есть купленный сеанс этого мероприятия — день плана = день сеанса, а не основная дата мероприятия
+  const date = params.get('date') ?? (ctxEvent ? eventDay(store.state, ctxEvent.id) : null);
   const inPlan = !!date && (store.state.plans[date] ?? []).includes(id);
   const hasTicket = !!date && hasTicketOn(store.state, date);
   const dayText = date ? ruDate(date) : '';
@@ -162,7 +163,7 @@ export function Activity() {
   const add = (d: string, eventId?: string, ticket = hasTicketOn(store.state, d)) => {
     const prev = store.state.plans[d] ?? [];
     store.addToPlan(d, id, eventId);
-    store.toast(ticket ? `Добавлено в план на ${ruDate(d)}` : `${place.name} — в плане на ${ruDate(d)}`, 'success', { label: 'Отменить', onClick: () => store.setPlan(d, prev) });
+    store.toast(ticket ? `Добавлено в план на ${ruDate(d)}` : `${place.name} — отмечено к мероприятию`, 'success', { label: 'Отменить', onClick: () => store.setPlan(d, prev) });
   };
   const togglePlan = () => {
     if (!date) { if (ticketDays) setPick(true); else nav('/main'); return; }
@@ -172,8 +173,8 @@ export function Activity() {
   // нет билета на этот день — честно говорим, что будет: место в плане, останется купить билет
   // до покупки место видно только на странице мероприятия, после покупки — сразу в плане дня (Figma: Activity — no ticket `438:39790`)
   const hint = !date ? (ticketDays ? null : `План дня собирается вокруг купленного билета. Выберите мероприятие${a.liked ? ' — место уже в избранном' : ', а место сохраните в избранное'}.`)
-    : !hasTicket ? (inPlan ? 'Место отмечено — оно на странице мероприятия, после покупки будет в плане дня.' : `Билета на ${dayText} пока нет. Место будет на странице мероприятия, а после покупки — сразу в плане дня.`) : null;
-  const label = inPlan ? 'Убрать из плана' : !date ? (ticketDays ? 'Добавить в план' : 'Выбрать мероприятие') : hasTicket ? 'Добавить в план дня' : `Добавить в план на ${dayText}`;
+    : !hasTicket ? (inPlan ? 'Место отмечено — оно на странице мероприятия, после покупки будет в плане на день сеанса.' : 'Билета пока нет. Место будет на странице мероприятия, а после покупки — в плане на день, который выберете.') : null;
+  const label = inPlan ? 'Убрать из плана' : !date ? (ticketDays ? 'Добавить в план' : 'Выбрать мероприятие') : 'Добавить в план дня';
   return (
     <div style={{ position: 'relative', height: 'var(--app-height, 100dvh)', overflow: 'hidden', background: 'color-mix(in srgb, var(--color-static-black) 60%, transparent)' }}>
       <StatusBar theme="Dark" />

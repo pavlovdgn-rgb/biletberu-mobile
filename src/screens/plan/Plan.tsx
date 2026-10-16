@@ -184,7 +184,7 @@ export function Plan({ state }: { state?: 'add' }) {
                   {near.map((p) => <MapPin key={p.id} at={PLACE_GEO[p.id]}><button type="button" aria-label={p.name} onClick={() => open(`/activity?id=${p.id}&date=${date}`)} style={{ padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}><MapMarker text="No" bulb="No" image={photos[p.image]} style={{ width: 36 }} /></button></MapPin>)}
                 </Map>
               )}
-              <TextButtons color="White" size="M" iconLeft="Yes" style={{ position: 'absolute', left: 16, top: 10, zIndex: 2 }} onClick={() => nav(activities.length ? `/map?route=${date}` : `/map?id=${eventId}`)}>Открыть карту</TextButtons>
+              <TextButtons color="White" size="M" iconLeft="Yes" style={{ position: 'absolute', left: 16, top: 10, zIndex: 2 }} onClick={() => nav(activities.length ? `/map?route=${date}` : `/map?id=${eventId}&date=${date}`)}>Открыть карту</TextButtons>
             </div>
           </div>}
           {!activities.length && venueAt && <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>

@@ -135,11 +135,12 @@ function useStoreValue() {
       // план без билета на это мероприятие: купили его день — план просто «включается»; купили другой сеанс — переезжает на день сеанса
       const eventId = now.cart.eventId, day = ticketEvent(fresh[0])?.dateISO ?? eventById(eventId)?.dateISO ?? TODAY;
       const from = Object.keys(now.plans).find((d) => d !== day && now.planEvents[d] === eventId && d >= TODAY && planPlaces(now.plans[d]).length > 0 && !now.tickets.some((t) => ticketEvent(t)?.dateISO === d));
-      const moveFrom = from && planPlaces(now.plans[day]).length === 0 ? from : undefined;
+      const moveFrom = from;
       justBought.add(`${eventId}@${day}`);
       set((st) => {
         const plans = { ...st.plans }, planEvents = { ...st.planEvents };
-        if (moveFrom) { plans[day] = plans[moveFrom]; delete plans[moveFrom]; delete planEvents[moveFrom]; }
+        // отмеченные до покупки места — в план дня купленного сеанса (если там уже что-то есть — добавляем, без повторов)
+        if (moveFrom) { plans[day] = [...new Set([...(plans[day] ?? []), ...plans[moveFrom]])]; delete plans[moveFrom]; delete planEvents[moveFrom]; }
         planEvents[day] = planEvents[day] ?? eventId;
         return { ...st, plans, planEvents, tickets: [...fresh, ...st.tickets], cart: null, cardAttempts: method === 'card' ? st.cardAttempts + 1 : st.cardAttempts, planPrompt: null };
       });
@@ -297,6 +298,16 @@ export const planPlaces = (ids: string[] | undefined) => (ids ?? []).filter((id)
 export const justBought = new Set<string>();
 type PlanState = { tickets: Ticket[]; plans: Record<string, string[]>; planEvents: Record<string, string> };
 export const hasTicketOn = (st: { tickets: Ticket[] }, date: string) => st.tickets.some((t) => ticketEvent(t)?.dateISO === date);
+/** День мероприятия для плана: ближайший купленный сеанс, иначе основная дата мероприятия. */
+export function eventDay(st: { tickets: Ticket[] }, eventId: string): string {
+  const own = st.tickets.filter((t) => t.eventId === eventId).map((t) => ticketEvent(t)?.dateISO).filter((d): d is string => !!d && d >= TODAY).sort();
+  return own[0] ?? eventById(eventId)?.dateISO ?? TODAY;
+}
+/** Места, отмеченные у мероприятия до покупки (план на день без билета, привязанный к этому мероприятию). */
+export function markedPlaces(st: { tickets: Ticket[]; plans: Record<string, string[]>; planEvents: Record<string, string> }, eventId: string): { date: string; places: string[] } | null {
+  const d = Object.keys(st.plans).find((x) => x >= TODAY && st.planEvents[x] === eventId && planPlaces(st.plans[x]).length > 0 && !hasTicketOn(st, x));
+  return d ? { date: d, places: planPlaces(st.plans[d]) } : null;
+}
 /** Напоминание на главной: ближайшее купленное событие через 0–7 дней, план на его день пуст, не скрыто и куплено не в этой сессии. */
 export function planReminder(st: PlanState & { hiddenReminders: string[]; planPromptEnabled: boolean }): { event: EventItem; days: number } | null {
   if (!st.planPromptEnabled) return null;

@@ -2,7 +2,7 @@ import { Fragment } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { AgeBadge, Button, HomeIndicator, Icon, StatusBar, TitlePage } from '../../components';
 import { MAIN_EVENT_ID, eventById, rub, sessionEvent, sessionsOf, weekday } from '../../data/mock';
-import { TODAY, useStore } from '../../data/store';
+import { TODAY, useStore, markedPlaces } from '../../data/store';
 import { NavBar, useBack } from '../_shell/app';
 import { Screen } from '../_shell/Screen';
 import { WhenBadge } from '../order-form/OrderForm';
@@ -17,9 +17,10 @@ export function Sessions() {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const back = useBack('/event');
-  const { startCart } = useStore();
+  const { state, startCart } = useStore();
   const e = eventById(params.get('id') ?? MAIN_EVENT_ID) ?? eventById(MAIN_EVENT_ID)!;
   const sessions = sessionsOf(e).filter((s) => s.dateISO >= TODAY);
+  const marked = markedPlaces(state, e.id);
   const pick = (s: (typeof sessions)[number]) => { startCart(e.id, s); nav(`/seats?id=${e.id}`); };
 
   return (
@@ -36,6 +37,11 @@ export function Sessions() {
         </section>
         <section style={{ ...card, display: 'flex', flexDirection: 'column', padding: 'var(--spacing-4xl) var(--spacing-2xl) var(--spacing-xl)' }}>
           <span className="ds-heading-h2" style={{ paddingBottom: 'var(--spacing-xl)' }}>Выберите дату</span>
+          {/* места, отмеченные до покупки, перейдут в план на выбранный сеанс (Figma: Sessions — marked places) */}
+          {marked && <span style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-md)', margin: '0 0 var(--spacing-2xl)', padding: 'var(--spacing-xl) var(--spacing-2xl)', borderRadius: 'var(--radius-md)', background: 'var(--color-background-base)' }}>
+            <Icon name="route" size={20} style={{ flexShrink: 0, color: 'var(--color-accent-violet)' }} />
+            <span className="ds-body">Вы отметили рядом {marked.places.length} {marked.places.length === 1 ? 'место' : marked.places.length < 5 ? 'места' : 'мест'} — {marked.places.length === 1 ? 'оно будет' : 'они будут'} в плане на выбранный день</span>
+          </span>}
           {sessions.map((s, i) => {
             const se = sessionEvent(e, s), w = weekday(s.dateISO);
             return (

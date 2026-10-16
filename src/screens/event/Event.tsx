@@ -6,7 +6,7 @@ import { photoSrc, photos } from '../../assets/photos';
 import { Rail, Screen } from '../_shell/Screen';
 import { MAIN_EVENT_ID, PLACE_GEO, eventById, eventGeo, placeById, placesNear, rub } from '../../data/mock';
 import { ACTIVITIES } from '../../data/people';
-import { hasTicketOn, planPlaces, useStore } from '../../data/store';
+import { eventDay, hasTicketOn, planPlaces, useStore } from '../../data/store';
 import { venueOf } from '../../data/venues';
 import { HeroGallery } from './HeroGallery';
 import { PERSONS } from '../../data/people';
@@ -35,7 +35,8 @@ export function Event() {
   const e = eventById(id);
   const { list: revs, avg, photos: allPhotos, uniquePhotos: revPhotos, mine } = useReviews(e?.id);
   const { state, toggleFavourite, toast } = useStore();
-  const waiting = e && !hasTicketOn(state, e.dateISO) ? planPlaces(state.plans[e.dateISO]).map(placeById).filter((p): p is NonNullable<ReturnType<typeof placeById>> => !!p) : [];
+  const day = e ? eventDay(state, e.id) : '';
+  const waiting = e && !hasTicketOn(state, day) ? planPlaces(state.plans[day]).map(placeById).filter((p): p is NonNullable<ReturnType<typeof placeById>> => !!p) : [];
   const ready = useFirstLoad(`event-${id}`, 400);
   const [stuck, setStuck] = useState(false);
   const [more, setMore] = useState(false);

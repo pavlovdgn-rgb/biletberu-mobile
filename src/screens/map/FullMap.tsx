@@ -11,6 +11,7 @@ import { NavBar, useBack, useOpen } from '../_shell/app';
 const W = 1364;
 const ZOOMS = [0.35, 0.55, 1, 1.6];
 const Z_DEFAULT = 2;
+const Z_MIN = ZOOMS[0], Z_MAX = ZOOMS[ZOOMS.length - 1];
 /** Центр карты так, чтобы маршрут встал в свободную часть экрана: левее кнопок зума и выше карточки «Маршрут построен» (px экрана). */
 const SHIFT_X = 15, SHIFT_Y = 40;
 const shiftCenter = ([lat, lon]: LatLon, z: number): LatLon => {
@@ -31,28 +32,51 @@ export function FullMap({ routeDate }: { routeDate?: string }) {
   const routeGeo = route ? dayPlan(state, route).items.map(itemGeo).filter((g): g is [number, number] => !!g) : [];
   const routeCenter: LatLon | undefined = routeGeo.length
     ? [(Math.min(...routeGeo.map((g) => g[0])) + Math.max(...routeGeo.map((g) => g[0]))) / 2, (Math.min(...routeGeo.map((g) => g[1])) + Math.max(...routeGeo.map((g) => g[1]))) / 2] : undefined;
-  const [zi, setZi] = useState(() => {
-    if (routeGeo.length < 2) return Z_DEFAULT;
+  // масштаб — плавный (щипок двумя пальцами), кнопки и колесо — к соседней ступени ZOOMS
+  const [z, setZ] = useState(() => {
+    if (routeGeo.length < 2) return ZOOMS[Z_DEFAULT];
     const pts = routeGeo.map((g) => toMap(g));
     const bw = Math.max(...pts.map((q) => q[0])) - Math.min(...pts.map((q) => q[0])), bh = Math.max(...pts.map((q) => q[1])) - Math.min(...pts.map((q) => q[1]));
     // свободная часть экрана: без шапки сверху и карточки «Маршрут построен» снизу, с полями под метки
     const vw = Math.min(window.innerWidth, 430) - 170, vh = (window.innerHeight || 852) - 440;
     const fit = ZOOMS.map((zz) => (W * zz * 2.2) / MAP_W).findLastIndex((kk) => bw * kk <= vw && bh * kk <= vh);
-    return Math.max(0, Math.min(Z_DEFAULT, fit));
+    return ZOOMS[Math.max(0, Math.min(Z_DEFAULT, fit))];
   });
   // колесо/трекпад тоже меняют ступень зума
   const box = useRef<HTMLDivElement>(null);
-  useEffect(() => { const el = box.current; if (!el) return; let t = 0; const on = (ev: WheelEvent) => { if (!ev.ctrlKey && Math.abs(ev.deltaY) < 30) return; ev.preventDefault(); const now = performance.now(); if (now - t < 250) return; t = now; setZi((v) => Math.max(0, Math.min(ZOOMS.length - 1, v + (ev.deltaY < 0 ? 1 : -1)))); }; el.addEventListener('wheel', on, { passive: false }); return () => el.removeEventListener('wheel', on); }, []);
+  const zRef = useRef(z); zRef.current = z;
+  const stepZoom = (dir: 1 | -1) => setZ((v) => (dir > 0 ? ZOOMS.find((x) => x > v + 0.01) ?? Z_MAX : [...ZOOMS].reverse().find((x) => x < v - 0.01) ?? Z_MIN));
+  useEffect(() => {
+    const el = box.current; if (!el) return;
+    // колесо/трекпад — ступенью
+    let t = 0;
+    const wheel = (ev: WheelEvent) => { if (!ev.ctrlKey && Math.abs(ev.deltaY) < 30) return; ev.preventDefault(); const now = performance.now(); if (now - t < 250) return; t = now; stepZoom(ev.deltaY < 0 ? 1 : -1); };
+    // щипок двумя пальцами — плавно, от масштаба в начале жеста
+    let pinch: { d: number; z: number } | null = null, raf = 0;
+    const dist = (ev: TouchEvent) => Math.hypot(ev.touches[0].clientX - ev.touches[1].clientX, ev.touches[0].clientY - ev.touches[1].clientY);
+    const start = (ev: TouchEvent) => { if (ev.touches.length === 2) { pinch = { d: dist(ev), z: zRef.current }; ev.preventDefault(); } };
+    const move = (ev: TouchEvent) => {
+      if (!pinch || ev.touches.length !== 2) return; ev.preventDefault();
+      const next = Math.max(Z_MIN, Math.min(Z_MAX, pinch.z * (dist(ev) / pinch.d)));
+      cancelAnimationFrame(raf); raf = requestAnimationFrame(() => setZ(next));
+    };
+    const end = (ev: TouchEvent) => { if (ev.touches.length < 2) pinch = null; };
+    el.addEventListener('wheel', wheel, { passive: false });
+    el.addEventListener('touchstart', start, { passive: false }); el.addEventListener('touchmove', move, { passive: false }); el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
+    return () => { el.removeEventListener('wheel', wheel); el.removeEventListener('touchstart', start); el.removeEventListener('touchmove', move); el.removeEventListener('touchend', end); el.removeEventListener('touchcancel', end); cancelAnimationFrame(raf); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [filter, setFilter] = useState('Все');
-  const z = ZOOMS[zi];
 
   const zoom = (
     <div style={{ position: 'absolute', right: 'var(--spacing-xl)', top: 378, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', borderRadius: 'var(--radius-md)', background: 'var(--color-background-disabled)', zIndex: 2 }}>
-      <ButtonIcon fill="transparent" icon="plus" label="Приблизить" state={zi === ZOOMS.length - 1 ? 'Disabled' : 'Default'} onClick={() => setZi(Math.min(ZOOMS.length - 1, zi + 1))} />
-      <ButtonIcon fill="transparent" icon="minus" label="Отдалить" state={zi === 0 ? 'Disabled' : 'Default'} onClick={() => setZi(Math.max(0, zi - 1))} />
+      <ButtonIcon fill="transparent" icon="plus" label="Приблизить" state={z >= Z_MAX - 0.01 ? 'Disabled' : 'Default'} onClick={() => stepZoom(1)} />
+      <ButtonIcon fill="transparent" icon="minus" label="Отдалить" state={z <= Z_MIN + 0.01 ? 'Disabled' : 'Default'} onClick={() => stepZoom(-1)} />
     </div>
   );
-  const open = (id: string) => openModal(route ? `/activity?id=${id}&date=${route}` : `/activity?id=${id}&event=${e.id}`);
+  // день плана: маршрут (?route=) или карта из плана дня (?date=) — места добавляются в этот день, а не на основную дату мероприятия
+  const planDay = route ?? params.get('date');
+  const open = (id: string) => openModal(planDay ? `/activity?id=${id}&date=${planDay}` : `/activity?id=${id}&event=${e.id}`);
 
   // маршрут дня и его итог (по улицам) — хуки до ветвления
   const routeItems = route ? dayPlan(state, route).items : [];
@@ -66,7 +90,7 @@ export function FullMap({ routeDate }: { routeDate?: string }) {
       catch (err) { if ((err as Error)?.name !== 'AbortError') toast('Не удалось поделиться', 'error'); }
     };
     return (
-      <div ref={box} style={{ position: 'relative', height: 'var(--app-height, 100dvh)', overflow: 'hidden', background: 'var(--illustration-map-land)' }}>
+      <div ref={box} style={{ position: 'relative', height: 'var(--app-height, 100dvh)', overflow: 'hidden', background: 'var(--illustration-map-land)', touchAction: 'pan-x pan-y' }}>
         <Map designation="Yes" metro="Yes" height="100%" scale={W * z} center={routeCenter ? shiftCenter(routeCenter, z) : PLACE_GEO.theatre}>
           <MapRoute points={items.map(itemGeo).filter((g): g is [number, number] => !!g)} />
           {/* мероприятие — домик (Map home point), места — метки с номером по порядку */}
@@ -111,10 +135,10 @@ export function FullMap({ routeDate }: { routeDate?: string }) {
     const bw = Math.max(...pts.map((q) => q[0])) - Math.min(...pts.map((q) => q[0])), bh = Math.max(...pts.map((q) => q[1])) - Math.min(...pts.map((q) => q[1]));
     const vw = (box.current?.clientWidth ?? 393) - 110, vh = (box.current?.clientHeight ?? 852) - 360; // поля под метки, чипсы и таббар
     const fit = ZOOMS.map((zz) => (W * zz * 2.2) / MAP_W).findLastIndex((kk) => bw * kk <= vw && bh * kk <= vh);
-    setZi(Math.max(0, Math.min(Z_DEFAULT, fit)));
+    setZ(ZOOMS[Math.max(0, Math.min(Z_DEFAULT, fit))]);
   };
   return (
-    <div ref={box} style={{ position: 'relative', height: 'var(--app-height, 100dvh)', overflow: 'hidden', background: 'var(--illustration-map-land)' }}>
+    <div ref={box} style={{ position: 'relative', height: 'var(--app-height, 100dvh)', overflow: 'hidden', background: 'var(--illustration-map-land)', touchAction: 'pan-x pan-y' }}>
       <Map designation="Yes" metro="Yes" height="100%" scale={W * z} center={venueAt} focus={focus}>
         <MapPin at={venueAt}><MapHomePoint radius="No" /></MapPin>
         {shown.map((p) => <MapPin key={p.id} at={PLACE_GEO[p.id]}><button type="button" aria-label={p.name} onClick={() => open(p.id)} style={{ padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}>
