@@ -1,17 +1,16 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Button, ButtonIcon, ButtonTag, DatepickerRange, HomeIndicator, Icon, LocationCard, Map, MapHomePoint, MapMarker, MapPin, MapRoute, useRouteMeters, StatusBar, TextButtons } from '../../components';
 import { photos } from '../../assets/photos';
 import { MORE_PLACES } from '../../data/places-more';
 import { PLACES, PLACE_FILTERS, PLACE_GEO, placesWord, weekday, eventGeo, placesNear, MAIN_EVENT_ID } from '../../data/mock';
-import { TODAY, dayPlan, ticketEvent, dayStats, itemGeo, placeKey, useStore, type PlanItem } from '../../data/store';
+import { TODAY, dayPlan, ticketEvent, dayStats, itemGeo, placeKey, useStore } from '../../data/store';
 import { EmptyState, NavBar, useOpen } from '../_shell/app';
 import { Screen } from '../_shell/Screen';
 import { EditPlanSheet } from './EditPlanSheet';
+import { DaySlots, SLOT_LABEL, SlotSheet, planOrder, slotOf, splitDay, type Slot } from './DaySlots';
 import { ROUTES, RoutesSheet } from './RoutesSheet';
 
-/** Кнопка «Готовые маршруты» в пустом плане — выключена до следующей итерации (решение 2026-10-07). */
-const ROUTES_ENABLED = false;
 import { NO_PLACE_FILTER, PlaceFilterSheet, matchPlace, placeFilterActive, type PlaceFilter } from './PlaceFilterSheet';
 
 const white = { background: 'var(--color-base-white)' } as const;
@@ -21,8 +20,6 @@ const plural = (n: number, one: string, few: string, many: string) => { const m1
 const monthGen = (iso: string) => MONTHS_GEN[Number(iso.slice(5, 7)) - 1];
 const WD_FULL: Record<string, string> = { пн: 'Понедельник', вт: 'Вторник', ср: 'Среда', чт: 'Четверг', пт: 'Пятница', сб: 'Суббота', вс: 'Воскресенье' };
 const SHORT: Record<string, string> = { nook: 'Кофейня', theatre: 'Театр', peacock: 'Ресторан', mozz: 'Бар', willow: 'Ресторан', square: 'Кофейня', boat: 'Катер', garden: 'Сад', platform: 'ТЦ', russian: 'Ресторан', ...Object.fromEntries(MORE_PLACES.map((p) => [p.id, p.short])) };
-/** Рекомендация по порядку точек плана. */
-const advice = (items: PlanItem[]) => items.map((p, i) => { const name = p.kind === 'event' ? 'вашего события' : p.name; return i === 0 ? `Начните с ${p.kind === 'event' ? name : `места «${name}»`}` : i === items.length - 1 ? `Завершите день: ${p.kind === 'event' ? 'ваше событие' : p.name}` : `Затем — ${p.kind === 'event' ? 'ваше событие' : p.name}`; }).join('. ') + '. Все места — в пешей доступности от площадки.';
 /** ~1 ч 40 мин на активность — как в макете (3 активности • 5 ч. 0 мин.). */
 
 /** plan created — план дня (Figma `180:18117`); state="add" — Add to the plan_0 (`181:17178`), шторка «Все интересные места».
@@ -48,8 +45,6 @@ export function Plan({ state }: { state?: 'add' }) {
   const [pf, setPf] = useState<PlaceFilter>(() => ({ ...NO_PLACE_FILTER, maxPrice: store.state.profile.budget, maxMeters: store.state.profile.walk }));
   const [pfOpen, setPfOpen] = useState(false);
   const [routes, setRoutes] = useState(false);
-  // «Места рядом» под картой: категория и места, ближние — первыми
-  const [nearCat, setNearCat] = useState('Все');
   // подсветка только что добавленной точки плана
   const [fresh, setFresh] = useState<string | null>(null);
   const hasTicket = ticketDates.includes(date);
@@ -60,9 +55,7 @@ export function Plan({ state }: { state?: 'add' }) {
   const eventId = items.find((p) => p.kind === 'event')?.eventId;
   // итог дня — по реальному пешему маршруту (по улицам)
   const stats = dayStats(items, useRouteMeters(items.map(itemGeo).filter((g): g is [number, number] => !!g)));
-  // места рядом — вокруг площадки мероприятия этого дня (за пределами карты — мест нет)
   const venueAt = eventId ? eventGeo(eventId) : null;
-  const near = venueAt ? placesNear(venueAt, eventId === MAIN_EVENT_ID).filter(PLACE_FILTERS[nearCat]).filter(matchPlace(pf)) : [];
   /** «Взять маршрут»: места до события, событие, места после — порядок плана дня. */
   const takeRoute = (ids: string[], title: string) => {
     const before = ROUTES.find((r) => r.title === title)!.steps.findIndex(([id]) => id === 'theatre');
@@ -70,6 +63,47 @@ export function Plan({ state }: { state?: 'add' }) {
     store.toast(`Маршрут «${title}» в плане`, 'success');
   };
 
+  // «Собрать день» и слоты: свежий стор — через ref (тосты с «Изменить»/«Отменить» срабатывают позже)
+  const live = useRef(store.state); live.current = store.state;
+  const [slotSheet, setSlotSheet] = useState<{ slot: Slot; replace?: string } | null>(null);
+  const [variant, setVariant] = useState<{ k: number } | null>(null);
+  const eventTime = (() => { const t = tickets.find((x) => ticketEvent(x)?.dateISO === date); return t ? ticketEvent(t)!.time : ''; })();
+  const candidates = venueAt ? placesNear(venueAt, eventId === MAIN_EVENT_ID).sort((a, b) => a.meters - b.meters) : [];
+  const favs = store.state.favourites;
+  const isFav = (id: string) => favs.includes(`place:${id}`);
+  const favNear = candidates.filter((p) => isFav(p.id) && !inPlan(p.id) && p.meters <= (store.state.profile.walk ?? 2000));
+  const slots = () => { const d = splitDay(dayPlan(live.current, date).items); return { b: d.before.map((p) => p.id), a: d.after.map((p) => p.id) }; };
+  const save = (b: string[], a: string[]) => store.setPlan(date, planOrder(live.current, date, b, a));
+  /** Поставить место в слот (или заменить им другое место). */
+  const putInSlot = (id: string, slot: Slot, replace?: string) => {
+    const { b, a } = slots(); const nb = b.filter((x) => x !== id), na = a.filter((x) => x !== id);
+    if (replace) { const i = nb.indexOf(replace), j = na.indexOf(replace); if (i >= 0) nb[i] = id; else if (j >= 0) na[j] = id; else (slot === 'before' ? nb : na).push(id); }
+    else (slot === 'before' ? nb : na).push(id);
+    save(nb, na); setVariant(null); setFresh(id); setTimeout(() => setFresh(null), 1600);
+  };
+  const nameOf = (id: string) => PLACES.find((p) => p.id === id)?.name ?? 'Место';
+  /** ＋ у избранного: место встаёт в слот по типу; «Изменить» в тосте — в другой слот. */
+  const addFav = (p: { id: string; category: string }) => {
+    const slot = slotOf(p.category), other: Slot = slot === 'before' ? 'after' : 'before';
+    putInSlot(p.id, slot);
+    store.toast(`${nameOf(p.id)} — ${SLOT_LABEL[slot]}`, 'success', { label: 'Изменить', onClick: () => { putInSlot(p.id, other); store.toast(`${nameOf(p.id)} — ${SLOT_LABEL[other]}`, 'success'); } });
+  };
+  /** «Собрать день»: кафе до начала и ужин/бар/прогулка после — сначала избранное, потом ближайшее, в рамках бюджета и расстояния из профиля. */
+  const assemble = (k: number) => {
+    const ok = candidates.filter(matchPlace(pf));
+    const pick = (slot: Slot) => { const l = ok.filter((p) => slotOf(p.category) === slot).sort((x, y) => Number(isFav(y.id)) - Number(isFav(x.id))); return l.length ? l[k % l.length] : null; };
+    const b = pick('before'), a = pick('after');
+    if (!b && !a) { store.toast('Рядом пока нет подходящих мест — выберите сами', 'info'); return; }
+    const prev = live.current.plans[date] ?? [];
+    save(b ? [b.id] : [], a ? [a.id] : []); setVariant({ k });
+    store.toast(k === 0 ? 'День собран' : 'Другой вариант', 'success', { label: 'Отменить', onClick: () => { store.setPlan(date, prev); setVariant(null); } });
+  };
+  const slotEl = slotSheet && (
+    <SlotSheet slot={slotSheet.slot} eventTime={eventTime} venue={venueAt} candidates={candidates} favourites={favs} inPlan={inPlan} replacing={slotSheet.replace}
+      onClose={() => setSlotSheet(null)}
+      onPick={(id) => { putInSlot(id, slotSheet.slot, slotSheet.replace); store.toast(`${nameOf(id)} — ${SLOT_LABEL[slotSheet.slot]}`, 'success'); }}
+      onRemove={() => { const id = slotSheet.replace!; const prev = live.current.plans[date] ?? []; store.removeFromPlan(date, id); setVariant(null); store.toast(`${nameOf(id)} — убрано из плана`, 'info', { label: 'Отменить', onClick: () => store.setPlan(date, prev) }); }} />
+  );
   const [sheetOut, setSheetOut] = useState(false);
   // закрытие с анимацией: шторка уезжает вниз, затемнение гаснет, затем снимаем
   const closeSheet = (after?: () => void) => { setSheetOut(true); setTimeout(() => { setSheet(false); setSheetOut(false); if (state === 'add') nav('/plan', { replace: true }); after?.(); }, 240); };
@@ -133,70 +167,57 @@ export function Plan({ state }: { state?: 'add' }) {
   );
 
   return (
-    <Screen header={header} footer={<div><NavBar active={1} /><HomeIndicator /></div>} overlay={sheetEl || (routes && <RoutesSheet onTake={takeRoute} onClose={() => setRoutes(false)} />) || (edit && <EditPlanSheet key={date + activities.length} date={date} title={`${WD_FULL[w.wd]}, ${dayNum} ${monthGen(date)}`} items={items} onClose={() => setEdit(false)} onAdd={() => { setEdit(false); setBackToEdit(true); setSheet(true); }} />)}>
+    <Screen header={header} footer={<div><NavBar active={1} /><HomeIndicator /></div>} overlay={slotEl || sheetEl || (routes && <RoutesSheet onTake={takeRoute} onClose={() => setRoutes(false)} />) || (edit && <EditPlanSheet key={date + activities.length} date={date} title={`${WD_FULL[w.wd]}, ${dayNum} ${monthGen(date)}`} items={items} onClose={() => setEdit(false)} onAdd={() => { setEdit(false); setBackToEdit(true); setSheet(true); }} />)}>
       <div style={{ ...white, borderRadius: 'var(--radius-2xl)', marginTop: 'var(--spacing-xl)', paddingTop: 'var(--spacing-3xl)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2xl)', minHeight: '60%' }}>
         {!hasTicket ? (
           <EmptyState icon="ticket" title={`На ${dayNum} ${monthGen(date).toLowerCase()} нет билетов`} text="План дня собирается вокруг купленного события. Выберите день с отметкой билета или купите билет" action="Выбрать мероприятие" onAction={() => nav('/main')} />
         ) : <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', padding: '0 var(--spacing-2xl)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-xl)', padding: 'var(--spacing-xl)', borderRadius: 'var(--radius-md)', background: 'var(--color-accent-violet)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4xl)', padding: '0 var(--spacing-2xl)' }}>
+            {/* плашка дня: пусто — «Собрать день»; собран — итог (места, время, пешком) и «Изменить» */}
+            <div style={{ display: 'flex', alignItems: activities.length ? 'center' : 'flex-start', flexDirection: activities.length ? 'row' : 'column', justifyContent: 'space-between', gap: 'var(--spacing-xl)', padding: 'var(--spacing-xl)', borderRadius: 'var(--radius-md)', background: 'var(--color-accent-violet)' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2xs)' }}>
                 <span className="ds-heading-h3" style={{ color: 'var(--color-static-white)' }}>{WD_FULL[w.wd]}, {dayNum} {monthGen(date)}</span>
-                {/* плашка дня — фиолетовая, цвет отметки билета в календаре (вариант Ф1, песочница `353:13369`) */}
-                {/* итог дня с иконками — как в карточке «Маршрут построен» (песочница `348:26831`): места, время, пешком */}
                 {activities.length ? (
                   <span className="ds-body" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-xs) var(--spacing-md)', color: 'var(--color-static-white)' }}>
                     {([['marker-pin-small', `${items.length} ${plural(items.length, 'место', 'места', 'мест')}`], ['clock-small', stats.short], ['navigation-pointer-small', stats.km]] as const).map(([ic, t]) => (
                       <span key={ic} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', whiteSpace: 'nowrap' }}><Icon name={ic} size={16} />{t}</span>
                     ))}
                   </span>
-                ) : <span className="ds-body" style={{ color: 'var(--color-static-white)' }}>Пока только событие</span>}
+                ) : <span className="ds-body" style={{ color: 'var(--color-static-white)' }}>Соберём день вокруг события</span>}
               </div>
-              {activities.length > 0 && <TextButtons color="White" onClick={() => setEdit(true)}>Изменить</TextButtons>}
+              {activities.length > 0 ? <TextButtons color="White" onClick={() => setEdit(true)}>Изменить</TextButtons>
+                : <TextButtons color="White" size="M" onClick={() => assemble(0)}>Собрать день</TextButtons>}
             </div>
-            {activities.length > 0 && <div style={{ display: 'flex', flexDirection: 'column', padding: 'var(--spacing-2xl) var(--spacing-2xl) 0', borderRadius: 'var(--radius-md)', background: 'var(--color-background-base)' }}>
-              <span className="ds-heading-h3" style={{ paddingBottom: 'var(--spacing-md)' }}>Наши рекомендации:</span>
-              <p className="ds-body" style={{ margin: 0, padding: '0 var(--spacing-2xs) var(--spacing-2xl)', color: 'var(--color-text-secondary)' }}>{advice(items)}</p>
+            {/* день по порядку: «До начала» / событие / «После» (песочница `477:31993`) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>
+              <DaySlots items={items} eventTime={eventTime} fresh={fresh} onSlot={(slot, replace) => setSlotSheet({ slot, replace })}
+                onEvent={(p) => nav(`/event?id=${p.eventId}`)} />
+              {variant && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+                <span className="ds-caption" style={{ color: 'var(--color-text-secondary)' }}>Тап по месту — заменить его</span>
+                <Button type="Secondary" size="Sm" onClick={() => assemble(variant.k + 1)}>Другой вариант</Button>
+              </div>}
+            </div>
+            {/* избранное рядом с площадкой — под рукой; ＋ ставит место в подходящий слот */}
+            {favNear.length > 0 && <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}><Icon name="heart-rounded-fill" size={20} style={{ color: 'var(--color-primary-orange)' }} /><span className="ds-heading-h3">Из избранного рядом · {favNear.length}</span></span>
+              {favNear.map((p) => <div key={p.id} role="link" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => open(`/activity?id=${p.id}&date=${date}`)}>
+                <LocationCard button="Yes" name={p.name} time={p.time} image={photos[p.image]} favourite onAction={() => addFav(p)} /></div>)}
             </div>}
-            <div id="plan-points" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-              {items.map((p, i) => <div key={p.id} role="link" tabIndex={0} style={{ cursor: 'pointer', borderRadius: 'var(--radius-md)', animation: fresh === p.id ? 'bbFresh 1.6s ease-out' : undefined }} onClick={() => (p.kind === 'event' ? nav(`/event?id=${p.eventId}`) : open(`/activity?id=${p.id}&date=${date}`))}><LocationCard photo="No" order={i + 1} name={p.name} time={p.time} category={p.category} /></div>)}
-            </div>
-            {/* «Готовые маршруты» (RoutesSheet) — отложено до следующей итерации прототипа: включить, вернув кнопку */}
-            {ROUTES_ENABLED && !activities.length && <Button type="Secondary" content="Icon" icon="route" onClick={() => setRoutes(true)}>Готовые маршруты</Button>}
-            {/* план собран: длинный список мест убираем (вариант Б), добавление — через шторку «Все интересные места» */}
-            {activities.length > 0 && <Button type="Secondary" content="Icon" icon="plus" onClick={() => setSheet(true)}>Добавить место</Button>}
           </div>
-          {/* площадка за пределами карты и план пуст — карты и мест рядом нет, честно об этом говорим */}
-          {!venueAt && !activities.length ? <EmptyState icon="marker-pin" title="Рядом с этой площадкой мест пока нет" text="Мы добавляем кафе и прогулки по районам. Пока можно спланировать день вокруг события в центре города" /> :
-          <div id="plan-map" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', paddingTop: 'var(--spacing-md)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', padding: '0 var(--spacing-2xl) var(--spacing-xl)' }}><Icon name="marker-pin" size={24} /><span className="ds-heading-h2">{activities.length ? 'Маршрут на карте' : 'Места рядом'}</span></div>
+          {/* площадка за пределами карты и план пуст — мест рядом нет, честно об этом говорим */}
+          {!venueAt && !activities.length && <EmptyState icon="marker-pin" title="Рядом с этой площадкой мест пока нет" text="Мы добавляем кафе и прогулки по районам. Пока можно спланировать день вокруг события в центре города" />}
+          {/* план собран — маршрут дня на карте */}
+          {activities.length > 0 && <div id="plan-map" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', paddingTop: 'var(--spacing-md)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', padding: '0 var(--spacing-2xl)' }}><Icon name="marker-pin" size={24} /><span className="ds-heading-h2">Маршрут дня</span></div>
             <div style={{ position: 'relative', height: 254, isolation: 'isolate' }}>
-              {activities.length ? (
-                <Map designation="No" metro="Yes" height={254} center={venueAt ?? PLACE_GEO.theatre}>
-                  <MapRoute points={items.map(itemGeo).filter((g): g is [number, number] => !!g)} />
-                  {/* мероприятие (куда куплен билет) — домик, как в макете; места — метки с номером */}
-                  {items.map((p, i) => { const g = itemGeo(p); return g && <MapPin key={p.id} at={g}>{p.kind === 'event' ? <MapHomePoint radius="No" /> : <MapMarker label={SHORT[placeKey(p)] ?? p.category} order={i + 1} image={photos[p.image]} />}</MapPin>; })}
-                </Map>
-              ) : (
-                // пустой план: сразу видно, что рядом с площадкой (вариант Б), метка — страница места
-                <Map designation="No" metro="Yes" height={254} scale={400} center={venueAt ?? PLACE_GEO.theatre}>
-                  {venueAt && <MapPin at={venueAt}><MapHomePoint /></MapPin>}
-                  {near.map((p) => <MapPin key={p.id} at={PLACE_GEO[p.id]}><button type="button" aria-label={p.name} onClick={() => open(`/activity?id=${p.id}&date=${date}`)} style={{ padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}><MapMarker text="No" bulb="No" image={photos[p.image]} style={{ width: 36 }} /></button></MapPin>)}
-                </Map>
-              )}
-              <TextButtons color="White" size="M" iconLeft="Yes" style={{ position: 'absolute', left: 16, top: 10, zIndex: 2 }} onClick={() => nav(activities.length ? `/map?route=${date}` : `/map?id=${eventId}&date=${date}`)}>Открыть карту</TextButtons>
+              <Map designation="No" metro="Yes" height={254} center={venueAt ?? PLACE_GEO.theatre}>
+                <MapRoute points={items.map(itemGeo).filter((g): g is [number, number] => !!g)} />
+                {items.map((p, i) => { const g = itemGeo(p); return g && <MapPin key={p.id} at={g}>{p.kind === 'event' ? <MapHomePoint radius="No" /> : <MapMarker label={SHORT[placeKey(p)] ?? p.category} order={i + 1} image={photos[p.image]} />}</MapPin>; })}
+              </Map>
+              <TextButtons color="White" size="M" iconLeft="Yes" style={{ position: 'absolute', left: 16, top: 10, zIndex: 2 }} onClick={() => nav(`/map?route=${date}`)}>Открыть карту</TextButtons>
             </div>
           </div>}
-          {!activities.length && venueAt && <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>
-            <div style={{ display: 'flex', gap: 'var(--spacing-md)', padding: '0 var(--spacing-2xl)', overflowX: 'auto', scrollbarWidth: 'none' }}>
-              {Object.keys(PLACE_FILTERS).map((f) => <ButtonTag key={f} status={nearCat === f ? 'Active' : 'No active'} onClick={() => setNearCat(f)}>{f}</ButtonTag>)}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', padding: '0 var(--spacing-2xl)' }}>
-              {near.length ? near.map((p) => <div key={p.id} role="link" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => open(`/activity?id=${p.id}&date=${date}`)}>
-                <LocationCard button="Yes" remove={inPlan(p.id)} name={p.name} time={p.time} image={photos[p.image]} favourite={store.state.favourites.includes(`place:${p.id}`)} onAction={() => toggle(p.id)} /></div>)
-                : <EmptyState title="Ничего не найдено" text="Попробуйте другую категорию" />}
-            </div>
-          </div>}
+          {venueAt && <div style={{ padding: '0 var(--spacing-2xl)' }}><TextButtons fill="No" iconRight="Yes" onClick={() => setSheet(true)}>Все места рядом</TextButtons></div>}
           {activities.length > 0 && <>
             <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-2xl) 0 var(--spacing-5xl)' }}>
               <TextButtons fill="No" iconLeft="Yes" iconLeftName="trash" danger onClick={() => { store.deletePlan(date); store.toast('Активности убраны из плана'); }}>Очистить план</TextButtons>
