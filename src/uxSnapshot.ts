@@ -1,10 +1,10 @@
 /** Save an inert, redacted copy of the visible app state at a click. */
-type Snapshot={id:string;study:string;html:string;width:number;height:number};
+type Snapshot={id:string;study:string;html:string;width:number;height:number;collectionVersion?:string};
 const MAX_BYTES=4*1024*1024;
 const hash=(value:string)=>{let a=2166136261,b=3335557771;for(const char of value){a=Math.imul(a^char.charCodeAt(0),16777619);b=Math.imul(b^char.charCodeAt(0),2246822519);}return (a>>>0).toString(16).padStart(8,'0')+(b>>>0).toString(16).padStart(8,'0')};
 const absoluteAssetUrls=(value:string)=>value.replace(/url\(\s*(["']?)(\/assets\/[^"')\s]+)\1\s*\)/g,(_match,_quote,path)=>`url("${location.origin}${path}")`);
 
-export function createSnapshotSender(study:string,api:string,token:string){
+export function createSnapshotSender(study:string,api:string,token:string,version:()=>string=()=> ''){
   const typed=new Set<string>(),pending=new Map<string,Snapshot>();
   document.addEventListener('input',event=>{
     const field=event.target;
@@ -25,11 +25,15 @@ export function createSnapshotSender(study:string,api:string,token:string){
         request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
       }):[];
       for(const item of new Map([...saved,...pending.values()].map(entry=>[entry.id,entry])).values()){
+        if((item.collectionVersion||'')!==version()){
+          pending.delete(item.id);db?.transaction('pending','readwrite').objectStore('pending').delete(item.id);continue;
+        }
         try{
+          const {collectionVersion,...body}=item;
           const response=await fetch(`${api}/api/heatmap/snapshots?study=${encodeURIComponent(study)}`,{
-            method:'POST',headers:{'Content-Type':'application/json','X-UXLab-Participant':token},
-            body:JSON.stringify(item),signal:AbortSignal.timeout(12000)});
-          if(response.status===400||response.status===413){
+            method:'POST',headers:{'Content-Type':'application/json','X-UXLab-Participant':token,...(collectionVersion?{'X-UXLab-Collection-Version':collectionVersion}:{})},
+            body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
+          if(response.status===400||response.status===409||response.status===413){
             pending.delete(item.id);
             db?.transaction('pending','readwrite').objectStore('pending').delete(item.id);
             continue;
@@ -95,7 +99,8 @@ export function createSnapshotSender(study:string,api:string,token:string){
       css=css.replace(/url\((['"]?)(?!data:|https?:|#)([^)'"\s]+)\1\)/g,(_all,quote,path)=>`url(${quote}${new URL(path,location.origin).href}${quote})`);
       css+='\n*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}html,body{overflow:hidden!important}';
       const html=`<!doctype html><html><head><meta charset="utf-8"><style>${css.replace(/<\/style/gi,'<\\/style')}</style></head>${clone.outerHTML}</html>`;
-      const item={id:`s3-${hash(`${innerWidth}:${innerHeight}:${html}`)}`,study,html,width:innerWidth,height:innerHeight};
+      const collectionVersion=version();
+      const item={id:`s3-${hash(`${collectionVersion}:${innerWidth}:${innerHeight}:${html}`)}`,study,html,width:innerWidth,height:innerHeight,collectionVersion};
       if(new TextEncoder().encode(JSON.stringify(item)).length>MAX_BYTES)return undefined;
       pending.set(item.id,item);
       void database.then(db=>{db?.transaction('pending','readwrite').objectStore('pending').put(item);}).catch(()=>{});
