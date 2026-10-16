@@ -93,7 +93,7 @@ export function SlotSheet({ slot, eventTime, venue, candidates, favourites, inPl
   const sub = slot === 'before' ? `Начало в ${eventTime} — места в пешей доступности от площадки` : `Событие закончится около ${end} — места рядом с площадкой`;
   const card = (p: NearPlace, close: (after?: () => void) => void) => (
     <LocationCard key={p.id} button="Yes" remove={p.id === replacing} name={p.name} time={p.time} image={photos[p.image]} favourite={favourites.includes(`place:${p.id}`)}
-      onAction={() => close(() => (p.id === replacing ? onRemove?.() : onPick(p.id)))} />
+      onAction={() => close(() => { if (p.id === replacing) onRemove?.(); else onPick(p.id); onClose(); })} />
   );
   const section = (icon: 'heart-rounded-fill' | 'marker-pin', label: string, items: NearPlace[], close: (after?: () => void) => void) => items.length > 0 && (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
@@ -120,7 +120,7 @@ export function SlotSheet({ slot, eventTime, venue, candidates, favourites, inPl
           : <div style={{ position: 'relative', height: 420, borderRadius: 'var(--radius-md)', overflow: 'hidden', isolation: 'isolate', flexShrink: 0 }}>
             <Map designation="No" metro="Yes" height={420} scale={500} center={venue ?? PLACE_GEO.theatre}>
               {venue && <MapPin at={venue}><MapHomePoint radius="No" /></MapPin>}
-              {list.map((p) => PLACE_GEO[p.id] && <MapPin key={p.id} at={PLACE_GEO[p.id]}><button type="button" aria-label={p.name} onClick={() => close(() => onDetails?.(p.id))} style={{ padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}>
+              {list.map((p) => PLACE_GEO[p.id] && <MapPin key={p.id} at={PLACE_GEO[p.id]}><button type="button" aria-label={p.name} onClick={() => close(() => { onClose(); onDetails?.(p.id); })} style={{ padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}>
                 <PickMarker name={p.name} image={photos[p.image]} fav={favourites.includes(`place:${p.id}`)} /></button></MapPin>)}
             </Map>
           </div>}
