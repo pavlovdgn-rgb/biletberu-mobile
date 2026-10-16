@@ -7,11 +7,12 @@ type Link={study:string;token:string;api:string};
 type Visit={id:string;study:string;session:string;page:string;timestamp:number;vw:number;vh:number;context:{signature:string;scrolls:number[][]}};
 type Click={id:string;study:string;session:string;seq:number;page:string;version:string;target:string;x:number;y:number;vw:number;vh:number;rw:number;rh:number;scroll_x:number;scroll_y:number;timestamp:number;context:{signature:string;scrolls:number[][];snapshot?:string;element:{label:string;rect:number[]}}};
 type TaskEvent={id:string;study:string;session:string;kind:string;taskId:string;timestamp:number;page:string;vw:number;vh:number;value?:string;label?:string};
-type Task={id:string;title:string;instruction:string;verification?:{method:'automatic'|'manual'}};
-type Attempt={taskId:string;title:string;scenario:string;ordinal:number;finishedAt:number|null;revision:string;status:string;verification?:{method:'automatic'|'manual'}};
+type Verification={method:'automatic'|'manual';type?:'screen'|'element'|'event';value?:string;page?:string};
+type Task={id:string;title:string;instruction:string;verification?:Verification};
+type Attempt={taskId:string;title:string;scenario:string;ordinal:number;finishedAt:number|null;revision:string;status:string;verification?:Verification};
 type Run={activeTaskId:string|null;finishedAt:number|null;finishedTasks:number;totalTasks:number;tasks:Attempt[]};
 type Policy={enabled:boolean;roundClosedAt?:number|null;collectClicks:boolean;collectVisits:boolean;mode:'free'|'scenario';studyTitle:string;tasks:Task[]};
-type Pending={kind:'visit';data:Visit}|{kind:'click';data:Click}|{kind:'task';data:TaskEvent};
+type Pending={kind:'visit';data:Visit}|{kind:'click';data:Click}|{kind:'task';data:TaskEvent;priority?:boolean};
 const LINK_KEY='uxlab-biletberu-link-v1';
 const routes=new Set(screens.flatMap(screen=>[screen.route,...(screen.states||[]).map(state=>state.route)]));
 const uuid=()=>crypto.randomUUID();
@@ -74,7 +75,9 @@ export function installMobileStudyCollector(){
   history.replaceState(history.state,'',linkedUrl(location.href));
   const captureSnapshot=createSnapshotSender(study,api,token);
   let queue:Pending[]=[];try{queue=JSON.parse(sessionStorage.getItem(queueKey)||'[]') as Pending[];}catch{/* A corrupt tab queue starts empty. */}
-  let enabled=false,clicks=false,visits=false,busy=false,lastPage='';
+  let enabled=false,clicks=false,visits=false,policyBusy=false,tasksBusy=false,backgroundBusy=false,lastPage='';
+  let taskSaveFailed=false;
+  let announcedPendingTask='';
   let policy:Policy|null=null,run:Run|null=null,panel:HTMLElement|null=null,dialog:HTMLDialogElement|null=null,shownTask='',completionDismissed=false;
   let highlightTimer:ReturnType<typeof setTimeout>|undefined;
   const bodyStyle=document.body.style;
@@ -103,6 +106,17 @@ export function installMobileStudyCollector(){
     });
     banner.querySelector('[data-close]')?.addEventListener('click',()=>{sessionStorage.setItem(`${sessionKey}:browser-tip`,'1');banner.remove();});
   }
+  const activeVerification=()=>run?.tasks.find(item=>item.taskId===run?.activeTaskId)?.verification;
+  const matchesSuccess=(data:TaskEvent)=>{
+    const check=activeVerification();
+    if(check?.method!=='automatic'||data.taskId!==run?.activeTaskId)return false;
+    if(data.kind==='screen_visited')return check.type==='screen'&&check.value===data.page&&check.page===data.page;
+    if(data.kind==='element_clicked')return check.type==='element'&&check.value===data.value&&check.page===data.page;
+    return data.kind==='prototype_event'&&check.type==='event'&&check.value===data.value&&!check.page;
+  };
+  // Persist priority with the event: later tasks must never reinterpret an old action.
+  // Legacy queues without this field retain their original task-event ordering.
+  const urgent=(item:Pending)=>item.kind==='task'&&item.priority!==false;
   const taskEvent=(kind:string,value='',label='')=>{
     const current=page(),scenario=policy?.mode==='scenario';
     const catalogSignal=kind==='screen_visited'||kind==='element_clicked'||kind==='prototype_event';
@@ -112,7 +126,9 @@ export function installMobileStudyCollector(){
     const data:TaskEvent={id:uuid(),study,session,kind,taskId:scenario&&kind!=='started'?run?.activeTaskId||'':'',
       timestamp:Date.now(),page:current,vw:dimension(innerWidth,240),vh:dimension(innerHeight,200)};
     if(value)data.value=value;if(label)data.label=label.slice(0,200);
-    queue.push({kind:'task',data});persist();void tick();
+    const priority=!catalogSignal||(scenario&&(!activeVerification()||matchesSuccess(data)));
+    queue.push({kind:'task',data,priority});persist();renderTask();
+    void flushTasks();void flushBackground();
   };
   const skipTask=()=>{
     if(run?.activeTaskId&&!queue.some(item=>item.kind==='task'&&item.data.taskId===run?.activeTaskId&&['finished','skipped'].includes(item.data.kind)))taskEvent('skipped');
@@ -157,13 +173,18 @@ export function installMobileStudyCollector(){
       return;
     }
     panel.querySelector('.uxlab-study-count')!.textContent=`${ordinal+1}/${total}`;
-    panel.querySelector('.uxlab-study-goal')!.textContent=title;
+    const successPending=queue.some(item=>item.kind==='task'&&matchesSuccess(item.data));
+    panel.querySelector('.uxlab-study-goal')!.textContent=successPending?(taskSaveFailed?'✓ Действие выполнено · повторяем сохранение…':'✓ Выполнено · сохраняем…'):title;
+    if(successPending&&announcedPendingTask!==run?.activeTaskId){
+      announcedPendingTask=run?.activeTaskId||'';
+      panel.querySelector('.uxlab-study-announcement')!.textContent='Задание выполнено. Сохраняем результат.';
+    }else if(!successPending)announcedPendingTask='';
     panel.querySelector('.uxlab-study-open')!.setAttribute('aria-label',`Задание ${ordinal+1} из ${total}: ${title}. Открыть подробности`);
     panel.querySelector('.uxlab-study-title')!.textContent=title;
     panel.querySelector('.uxlab-study-instruction')!.textContent=instruction;
     (panel.querySelector('.uxlab-study-instruction') as HTMLElement).hidden=instruction.trim().replace(/\s+/g,' ')===title.trim().replace(/\s+/g,' ');
     const automatic=(attempt?.verification??fallback.verification)?.method==='automatic';
-    const pending=queue.some(item=>item.kind==='task'&&item.data.taskId===run?.activeTaskId&&['finished','skipped'].includes(item.data.kind));
+    const pending=successPending||queue.some(item=>item.kind==='task'&&item.data.taskId===run?.activeTaskId&&['finished','skipped'].includes(item.data.kind));
     panel.querySelector('.uxlab-study-status')!.textContent=pending?'Сохраняем переход. Если нет связи, повторим автоматически…':!run?'Загрузка задания…':automatic?'Задание завершится автоматически, когда вы выполните действие.':`Завершено ${run.finishedTasks} из ${total}`;
     const finish=panel.querySelector('.uxlab-study-finish') as HTMLButtonElement;
     finish.textContent=automatic?'Пропустить':'Завершить задание';
@@ -191,6 +212,7 @@ export function installMobileStudyCollector(){
     if(visits)queue.push({kind:'visit',data:{id:uuid(),study,session,page:current,timestamp:Date.now(),vw:dimension(innerWidth,240),vh:dimension(innerHeight,200),context:context()}});
     lastPage=current;persist();taskEvent('screen_visited');
     if(['bb-plan','bb-plan--add','bb-no-ticket'].includes(current))taskEvent('prototype_event','planning_opened');
+    void flushBackground();
   };
   const onClick=(event:MouseEvent)=>{
     const current=page();if(!enabled||!current||!(event.target instanceof Element)||event.target.closest('[data-uxlab-overlay]'))return;
@@ -204,7 +226,7 @@ export function installMobileStudyCollector(){
       x:Math.max(0,Math.min(1,event.clientX/innerWidth)),y:Math.max(0,Math.min(1,event.clientY/innerHeight)),
       vw:dimension(innerWidth,240),vh:dimension(innerHeight,200),rw:Math.min(10000,dimension(document.documentElement.scrollWidth,1)),
       rh:Math.min(50000,dimension(document.documentElement.scrollHeight,1)),scroll_x:scrollX,scroll_y:scrollY,
-      timestamp:Date.now(),context:{...view,...(snapshot?{snapshot}:{}),element:info.element}}});persist();
+      timestamp:Date.now(),context:{...view,...(snapshot?{snapshot}:{}),element:info.element}}});persist();void flushBackground();
   };
   document.addEventListener('click',onClick,true);
   addEventListener('ux-success-signal',(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.kind==='prototype_event'&&typeof detail.value==='string'&&detail.value.length<=200)taskEvent('prototype_event',detail.value);});
@@ -213,8 +235,8 @@ export function installMobileStudyCollector(){
   history.pushState=function(data,unused,url){push.call(this,data,unused,url?linkedUrl(url):url);afterNavigation();};
   history.replaceState=function(data,unused,url){replace.call(this,data,unused,url?linkedUrl(url):url);afterNavigation();};
   addEventListener('popstate',afterNavigation);
-  async function tick(){
-    if(busy)return;busy=true;
+  async function refreshPolicy(){
+    if(policyBusy)return;policyBusy=true;
     try{
       const response=await fetch(url('/api/project/config'),{headers,signal:AbortSignal.timeout(12000)});
       if(response.ok){
@@ -226,22 +248,47 @@ export function installMobileStudyCollector(){
         if(enabled&&policy.mode==='scenario'&&!run&&!queue.some(item=>item.kind==='task'&&item.data.kind==='started'))taskEvent('started');
         renderTask();
       }else if(response.status===400||response.status===403||response.status===404){enabled=false;clicks=false;visits=false;}
-      for(const item of [...queue].slice(0,25)){
-        const path=item.kind==='visit'?'/api/project/visit':item.kind==='task'?'/api/project/task-events':'/api/heatmap/events';
-        const body=item.kind==='visit'?item.data:{events:[item.data]};
-        const sent=await fetch(url(path),{method:'POST',headers,body:JSON.stringify(item.kind==='task'?item.data:body),signal:AbortSignal.timeout(12000)});
-        if(!sent.ok)break;
-        if(item.kind==='task'){
-          const result=await sent.json() as {run?:Run|null};
-          const previous=run?.activeTaskId;
-          if(result.run!==undefined){run=result.run;try{sessionStorage.setItem(`${sessionKey}:run`,JSON.stringify(run));}catch{/* Keep the task in memory. */}}
-          if(run?.activeTaskId&&!previous)taskEvent('screen_visited');
-        }
-        queue=queue.filter(other=>other.data.id!==item.data.id);persist();
-        if(item.kind==='task')renderTask();
-      }
-    }catch{/* Keep the queue until the API is available. */}
-    finally{busy=false;}
+      void flushTasks();void flushBackground();
+    }catch{/* The last known policy remains usable while the request is retried. */}
+    finally{policyBusy=false;}
   }
-  setInterval(()=>void tick(),2000);addEventListener('online',()=>void tick());void tick();
+  async function send(item:Pending){
+    const path=item.kind==='visit'?'/api/project/visit':item.kind==='task'?'/api/project/task-events':'/api/heatmap/events';
+    const body=item.kind==='click'?{events:[item.data]}:item.data;
+    const sent=await fetch(url(path),{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
+    if(!sent.ok)throw new Error('Study event not saved');
+    return item.kind==='task'?await sent.json() as {run?:Run|null;paused?:boolean}:{};
+  }
+  async function flushTasks(){
+    if(tasksBusy||!policy||!enabled)return;tasksBusy=true;
+    try{
+      let item:Pending|undefined;
+      while(enabled&&(item=queue.find(urgent))){
+        const result=await send(item);
+        const previous=run?.activeTaskId;
+        if(result.run!==undefined){run=result.run;try{sessionStorage.setItem(`${sessionKey}:run`,JSON.stringify(run));}catch{/* Keep the task in memory. */}}
+        const savedId=item.data.id;
+        queue=queue.filter(other=>other.data.id!==savedId);persist();taskSaveFailed=false;
+        if(result.paused){enabled=false;clicks=false;visits=false;}
+        renderTask();
+        if(run?.activeTaskId&&!previous)taskEvent('screen_visited');
+      }
+    }catch{taskSaveFailed=true;renderTask();/* Durable queue retries on the timer or online event. */}
+    finally{tasksBusy=false;void flushBackground();}
+  }
+  async function flushBackground(){
+    if(backgroundBusy||tasksBusy||!policy||!enabled||queue.some(urgent))return;backgroundBusy=true;
+    try{
+      // Analytics never hold up a task transition. A late catalog response must
+      // not overwrite the newer run already returned by the priority request.
+      for(let count=0;count<25&&!tasksBusy&&!queue.some(urgent);count++){
+        const item=queue.find(other=>!urgent(other));if(!item)break;
+        await send(item);
+        queue=queue.filter(other=>other.data.id!==item.data.id);persist();
+      }
+    }catch{/* Keep analytics in the durable queue without blocking task progress. */}
+    finally{backgroundBusy=false;}
+  }
+  const tick=()=>{void refreshPolicy();void flushTasks();void flushBackground();};
+  setInterval(tick,2000);addEventListener('online',tick);tick();
 }
