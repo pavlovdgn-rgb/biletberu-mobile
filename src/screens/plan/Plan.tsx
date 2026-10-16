@@ -100,7 +100,7 @@ export function Plan({ state }: { state?: 'add' }) {
   };
   const slotEl = slotSheet && (
     <SlotSheet slot={slotSheet.slot} eventTime={eventTime} venue={venueAt} candidates={candidates} favourites={favs} inPlan={inPlan} replacing={slotSheet.replace}
-      onClose={() => setSlotSheet(null)} onDetails={(id) => open(`/activity?id=${id}&date=${date}`)}
+      onClose={() => setSlotSheet(null)} onDetails={(id) => open(`/activity?id=${id}&date=${date}&slot=${slotSheet.slot}`)}
       onPick={(id) => { putInSlot(id, slotSheet.slot, slotSheet.replace); store.toast(`${nameOf(id)} — ${SLOT_LABEL[slotSheet.slot]}`, 'success'); }}
       onRemove={() => { const id = slotSheet.replace!; const prev = live.current.plans[date] ?? []; store.removeFromPlan(date, id); setVariant(null); store.toast(`${nameOf(id)} — убрано из плана`, 'info', { label: 'Отменить', onClick: () => store.setPlan(date, prev) }); }} />
   );

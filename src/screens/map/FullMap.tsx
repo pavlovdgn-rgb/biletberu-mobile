@@ -3,9 +3,9 @@ import { useSearchParams } from 'react-router';
 import { ButtonIcon, ButtonTag, HomeIndicator, Icon, Map, MapHomePoint, MapMarker, MapPin, MapRoute, StatusBar } from '../../components';
 import { MAP_GEO, MAP_W, toMap, useRouteMeters, type LatLon } from '../../components/Map';
 import { photos } from '../../assets/photos';
-import { MAIN_EVENT_ID, PLACE_FILTERS, PLACE_GEO, eventById, placeById, placesNear, spotsWord, eventGeo } from '../../data/mock';
+import { MAIN_EVENT_ID, PLACE_FILTERS, PLACE_GEO, eventById, placeById, spotsWord, eventGeo } from '../../data/mock';
 import { dayPlan, dayStats, hasTicketOn, itemGeo, placeKey, useStore } from '../../data/store';
-import { PickMarker, PlacePeek, SLOT_LABEL, planOrder, splitDay, type Slot } from '../plan/DaySlots';
+import { PickMarker } from '../plan/DaySlots';
 import { NavBar, useBack, useOpen } from '../_shell/app';
 
 /** Масштаб полной карты: 1364 — как кадр макета; ступени зума — подписи улиц появляются по мере приближения. */
@@ -28,7 +28,7 @@ export function FullMap({ routeDate }: { routeDate?: string }) {
   const [params] = useSearchParams();
   const route = params.get('route') ?? routeDate;
   const e = eventById(params.get('id') ?? MAIN_EVENT_ID) ?? eventById(MAIN_EVENT_ID)!;
-  const { state, toast, setPlan, removeFromPlan } = useStore();
+  const { state, toast } = useStore();
   // маршрут дня: открываем по центру его точек и в самом крупном масштабе, где видны все (а не всегда на театре)
   const routeGeo = route ? dayPlan(state, route).items.map(itemGeo).filter((g): g is [number, number] => !!g) : [];
   const routeCenter: LatLon | undefined = routeGeo.length
@@ -78,18 +78,9 @@ export function FullMap({ routeDate }: { routeDate?: string }) {
   // день плана: маршрут (?route=) или карта из плана дня (?date=) — места добавляются в этот день, а не на основную дату мероприятия
   const planDay = route ?? params.get('date');
   const open = (id: string) => openModal(planDay ? `/activity?id=${id}&date=${planDay}` : `/activity?id=${id}&event=${e.id}`);
-  // выбор мест на карте для плана дня (из «Куда пойдём», есть билет на этот день): тап по метке — карточка места, «До начала» / «После»
+  // карта из плана дня (есть билет на этот день): метки с избранным и галочкой «в плане»; тап — карточка места, в ней «Добавить в план дня»
   const picking = !route && !!planDay && hasTicketOn(state, planDay);
-  const [sel, setSel] = useState<string | null>(null);
   const planIds = picking ? dayPlan(state, planDay!).activities.map((p) => p.id) : [];
-  const live = useRef(state); live.current = state;
-  const putInSlot = (id: string, slot: Slot) => {
-    const d = splitDay(dayPlan(live.current, planDay!).items); const prev = live.current.plans[planDay!] ?? [];
-    const b = d.before.map((p) => p.id).filter((x) => x !== id), a = d.after.map((p) => p.id).filter((x) => x !== id);
-    (slot === 'before' ? b : a).push(id);
-    setPlan(planDay!, planOrder(live.current, planDay!, b, a)); setSel(null);
-    toast(`${placeById(id)?.name ?? 'Место'} — ${SLOT_LABEL[slot]}`, 'success', { label: 'Отменить', onClick: () => setPlan(planDay!, prev) });
-  };
 
   // маршрут дня и его итог (по улицам) — хуки до ветвления
   const routeItems = route ? dayPlan(state, route).items : [];
@@ -154,8 +145,8 @@ export function FullMap({ routeDate }: { routeDate?: string }) {
     <div ref={box} style={{ position: 'relative', height: 'var(--app-height, 100dvh)', overflow: 'hidden', background: 'var(--illustration-map-land)', touchAction: 'pan-x pan-y' }}>
       <Map designation="Yes" metro="Yes" height="100%" scale={W * z} center={venueAt} focus={focus}>
         <MapPin at={venueAt}><MapHomePoint radius="No" /></MapPin>
-        {shown.map((p) => <MapPin key={p.id} at={PLACE_GEO[p.id]}><button type="button" aria-label={p.name} onClick={() => (picking ? setSel(p.id) : open(p.id))} style={{ padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}>
-          {picking ? <PickMarker name={p.name} image={photos[p.image]} fav={state.favourites.includes(`place:${p.id}`)} inPlan={planIds.includes(p.id)} selected={sel === p.id} />
+        {shown.map((p) => <MapPin key={p.id} at={PLACE_GEO[p.id]}><button type="button" aria-label={p.name} onClick={() => open(p.id)} style={{ padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}>
+          {picking ? <PickMarker name={p.name} image={photos[p.image]} fav={state.favourites.includes(`place:${p.id}`)} inPlan={planIds.includes(p.id)} />
             : <MapMarker size="Lg" bulb="No" label={p.name} image={photos[p.image]} style={{ width: 65 }} />}
         </button></MapPin>)}
       </Map>
@@ -173,13 +164,6 @@ export function FullMap({ routeDate }: { routeDate?: string }) {
         {shown.length === 0 && <div className="ds-body" style={{ margin: 'var(--spacing-xl) var(--spacing-2xl) 0', padding: 'var(--spacing-xl) var(--spacing-2xl)', borderRadius: 'var(--radius-lg)', background: 'var(--color-base-white)', boxShadow: 'var(--shadow-md)' }}>Рядом нет мест в категории «{filter}»</div>}
       </div>
       {zoom}
-      {picking && (() => { const p = sel ? placeById(sel) : null; if (!p) return null; const has = planIds.includes(p.id);
-        const near = venueAt && PLACE_GEO[p.id] ? placesNear(venueAt, e.id === MAIN_EVENT_ID).find((x) => x.id === p.id) : null;
-        return <div style={{ position: 'absolute', left: 'var(--spacing-2xl)', right: 'var(--spacing-2xl)', bottom: 110, zIndex: 3 }}>
-          <PlacePeek place={{ ...p, time: near?.time ?? p.time }} fav={state.favourites.includes(`place:${p.id}`)} onClose={() => setSel(null)} onDetails={() => open(p.id)}
-            actions={has ? [{ label: 'Убрать из плана', onClick: () => { removeFromPlan(planDay!, p.id); setSel(null); toast(`${p.name} — убрано из плана`); } }]
-              : [{ label: 'До начала', primary: true, onClick: () => putInSlot(p.id, 'before') }, { label: 'После', primary: true, onClick: () => putInSlot(p.id, 'after') }]} />
-        </div>; })()}
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 2 }}><NavBar active={picking ? 1 : 0} /><HomeIndicator /></div>
     </div>
   );

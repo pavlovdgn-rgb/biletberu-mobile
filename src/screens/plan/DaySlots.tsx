@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, ButtonTag, Icon, LocationCard, Map, MapHomePoint, MapMarker, MapPin, Tabs } from '../../components';
+import { ButtonTag, Icon, LocationCard, Map, MapHomePoint, MapMarker, MapPin, Tabs } from '../../components';
 import { photos } from '../../assets/photos';
 import { PLACE_FILTERS, PLACE_GEO, type NearPlace } from '../../data/mock';
 import { dayPlan, type PlanItem } from '../../data/store';
@@ -32,29 +32,6 @@ export function PickMarker({ name, image, fav, inPlan, selected }: { name: strin
       {(fav || inPlan) && <span style={{ position: 'absolute', top: -6, right: 6, display: 'inline-flex', padding: 3, borderRadius: 'var(--radius-pill)', background: inPlan ? 'var(--color-primary-orange)' : 'var(--color-static-white)', color: inPlan ? 'var(--color-static-white)' : 'var(--color-primary-orange)', boxShadow: 'var(--shadow-sm)' }}>
         <Icon name={inPlan ? 'Essentials/check' : 'heart-rounded-fill'} size={12} /></span>}
     </span>
-  );
-}
-
-/** Карточка выбранного на карте места: фото, название, время пешком; действия — добавить в слот и «Подробнее». */
-export function PlacePeek({ place, fav, actions, onDetails, onClose }: {
-  place: { name: string; time: string; image: string }; fav?: boolean;
-  actions: Array<{ label: string; primary?: boolean; onClick: () => void }>; onDetails: () => void; onClose: () => void;
-}) {
-  return (
-    <div role="dialog" aria-label={place.name} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', padding: 'var(--spacing-xl)', borderRadius: 'var(--radius-xl)', background: 'var(--color-base-white)', boxShadow: 'var(--shadow-md)', animation: 'bbScreenIn 180ms var(--motion-ease)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xl)' }}>
-        <img src={photos[place.image]} alt="" style={{ width: 56, height: 56, borderRadius: 'var(--radius-md)', objectFit: 'cover', flexShrink: 0 }} />
-        <span role="link" tabIndex={0} onClick={onDetails} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', cursor: 'pointer' }}>
-          <span className="ds-price" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>{fav && <Icon name="heart-rounded-fill" size={16} style={{ color: 'var(--color-primary-orange)', flexShrink: 0 }} />}<span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{place.name}</span></span>
-          <span className="ds-body" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', color: 'var(--color-text-secondary)' }}><Icon name="clock-small" size={16} style={{ color: 'var(--color-primary-orange)' }} />{place.time}</span>
-          <span className="ds-note" style={{ color: 'var(--color-primary-orange)' }}>Подробнее</span>
-        </span>
-        <button type="button" aria-label="Закрыть" onClick={onClose} style={{ alignSelf: 'flex-start', display: 'inline-flex', padding: 0, border: 0, background: 'transparent', color: 'var(--color-text-secondary)', cursor: 'pointer' }}><Icon name="x-close" size={20} /></button>
-      </div>
-      <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
-        {actions.map((a) => <Button key={a.label} size="Sm" type={a.primary ? 'Primary' : 'Secondary'} onClick={a.onClick} style={{ flex: 1 }}>{a.label}</Button>)}
-      </div>
-    </div>
   );
 }
 
@@ -107,8 +84,6 @@ export function SlotSheet({ slot, eventTime, venue, candidates, favourites, inPl
   const [view, setView] = useState(0);
   // в слот можно поставить любое место — тип не навязываем; сузить — чипсами
   const [cat, setCat] = useState('Все');
-  // карта: тап по метке — карточка места (не добавление сразу)
-  const [sel, setSel] = useState<string | null>(null);
   const all = candidates.filter((p) => !inPlan(p.id) || p.id === replacing);
   const cats = ['Все', ...Object.keys(PLACE_FILTERS).filter((c) => c !== 'Все' && all.some(PLACE_FILTERS[c]))];
   const list = all.filter(PLACE_FILTERS[cat] ?? (() => true));
@@ -145,13 +120,9 @@ export function SlotSheet({ slot, eventTime, venue, candidates, favourites, inPl
           : <div style={{ position: 'relative', height: 420, borderRadius: 'var(--radius-md)', overflow: 'hidden', isolation: 'isolate', flexShrink: 0 }}>
             <Map designation="No" metro="Yes" height={420} scale={500} center={venue ?? PLACE_GEO.theatre}>
               {venue && <MapPin at={venue}><MapHomePoint radius="No" /></MapPin>}
-              {list.map((p) => PLACE_GEO[p.id] && <MapPin key={p.id} at={PLACE_GEO[p.id]}><button type="button" aria-label={p.name} onClick={() => setSel(p.id)} style={{ padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}>
-                <PickMarker name={p.name} image={photos[p.image]} fav={favourites.includes(`place:${p.id}`)} selected={sel === p.id} /></button></MapPin>)}
+              {list.map((p) => PLACE_GEO[p.id] && <MapPin key={p.id} at={PLACE_GEO[p.id]}><button type="button" aria-label={p.name} onClick={() => close(() => onDetails?.(p.id))} style={{ padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}>
+                <PickMarker name={p.name} image={photos[p.image]} fav={favourites.includes(`place:${p.id}`)} /></button></MapPin>)}
             </Map>
-            {(() => { const p = list.find((x) => x.id === sel); return p && <div style={{ position: 'absolute', left: 'var(--spacing-md)', right: 'var(--spacing-md)', bottom: 'var(--spacing-md)', zIndex: 3 }}>
-              <PlacePeek place={p} fav={favourites.includes(`place:${p.id}`)} onClose={() => setSel(null)} onDetails={() => close(() => onDetails?.(p.id))}
-                actions={[{ label: `Добавить ${SLOT_LABEL[slot]}`, primary: true, onClick: () => close(() => onPick(p.id)) }]} />
-            </div>; })()}
           </div>}
       </div>
     </>)}</BottomSheet>

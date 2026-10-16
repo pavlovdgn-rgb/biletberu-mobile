@@ -1,12 +1,13 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { Button, ButtonIcon, Card, HomeIndicator, Icon, PriceTag, Radio, StatusBar, TitlePage } from '../../components';
 import { photos } from '../../assets/photos';
 import { eventById, placeById, priceLabel, ruDate, whenLabel, eventGeo, placesNear, MAIN_EVENT_ID, type EventItem } from '../../data/mock';
 import { emitStudySignal } from '../../uxStudySignals';
 import { ACTIVITIES, PERSONS, VENUES, personById, venueById } from '../../data/people';
-import { TODAY, eventDay, hasTicketOn, ticketEvent, useStore } from '../../data/store';
+import { TODAY, eventDay, hasTicketOn, ticketEvent, useStore, dayPlan } from '../../data/store';
 import { BottomSheet } from '../_shell/BottomSheet';
+import { SLOT_LABEL, planOrder, slotOf, splitDay, type Slot } from '../plan/DaySlots';
 import { EmptyState, NavBar, useClose } from '../_shell/app';
 import { Rail, Screen } from '../_shell/Screen';
 
@@ -143,6 +144,7 @@ export function Activity() {
   const store = useStore();
   const nav = useNavigate();
   const [pick, setPick] = useState(false);
+  const live = useRef(store.state); live.current = store.state;
   const a = useDetailActions(`place:${id}`, place?.name ?? '');
   const nearbyEvent = params.get('event');
   useEffect(() => {
@@ -160,8 +162,21 @@ export function Activity() {
   const dayText = date ? ruDate(date) : '';
   // без контекста мероприятия добавить можно только в день с билетом; билетов нет — ведём к мероприятиям
   const ticketDays = store.state.tickets.some((t) => (ticketEvent(t)?.dateISO ?? '') >= TODAY);
+  // день с билетом: место встаёт в слот плана — выбранный (?slot= из шторки слота) или по типу; «Изменить» в тосте — в другой слот
+  const slotParam = params.get('slot') as Slot | null;
+  const putInSlot = (d: string, slot: Slot) => {
+    const st = live.current; const parts = splitDay(dayPlan(st, d).items);
+    const b = parts.before.map((p) => p.id).filter((x) => x !== id), af = parts.after.map((p) => p.id).filter((x) => x !== id);
+    (slot === 'before' ? b : af).push(id); store.setPlan(d, planOrder(st, d, b, af));
+  };
   const add = (d: string, eventId?: string, ticket = hasTicketOn(store.state, d)) => {
     const prev = store.state.plans[d] ?? [];
+    if (ticket) {
+      const slot = slotParam ?? slotOf(place.category), other: Slot = slot === 'before' ? 'after' : 'before';
+      putInSlot(d, slot);
+      store.toast(`${place.name} — ${SLOT_LABEL[slot]}`, 'success', slotParam ? { label: 'Отменить', onClick: () => store.setPlan(d, prev) } : { label: 'Изменить', onClick: () => { putInSlot(d, other); store.toast(`${place.name} — ${SLOT_LABEL[other]}`, 'success'); } });
+      return;
+    }
     store.addToPlan(d, id, eventId);
     store.toast(ticket ? `Добавлено в план на ${ruDate(d)}` : `${place.name} — отмечено к мероприятию`, 'success', { label: 'Отменить', onClick: () => store.setPlan(d, prev) });
   };
@@ -174,7 +189,7 @@ export function Activity() {
   // до покупки место видно только на странице мероприятия, после покупки — сразу в плане дня (Figma: Activity — no ticket `438:39790`)
   const hint = !date ? (ticketDays ? null : `План дня собирается вокруг купленного билета. Выберите мероприятие${a.liked ? ' — место уже в избранном' : ', а место сохраните в избранное'}.`)
     : !hasTicket ? (inPlan ? 'Место отмечено — оно на странице мероприятия, после покупки будет в плане на день сеанса.' : 'Билета пока нет. Место будет на странице мероприятия, а после покупки — в плане на день, который выберете.') : null;
-  const label = inPlan ? 'Убрать из плана' : !date ? (ticketDays ? 'Добавить в план' : 'Выбрать мероприятие') : 'Добавить в план дня';
+  const label = inPlan ? 'Убрать из плана' : !date ? (ticketDays ? 'Добавить в план' : 'Выбрать мероприятие') : hasTicket && slotParam ? `Добавить ${SLOT_LABEL[slotParam]}` : 'Добавить в план дня';
   return (
     <div style={{ position: 'relative', height: 'var(--app-height, 100dvh)', overflow: 'hidden', background: 'color-mix(in srgb, var(--color-static-black) 60%, transparent)' }}>
       <StatusBar theme="Dark" />
