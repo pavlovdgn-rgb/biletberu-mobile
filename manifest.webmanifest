@@ -1,0 +1,21 @@
+{
+  "name": "Билет Беру",
+  "short_name": "Билет Беру",
+  "start_url": "app/main",
+  "scope": "app/",
+  "display": "standalone",
+  "background_color": "#F5F5F5",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    {
+      "src": "app-icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
