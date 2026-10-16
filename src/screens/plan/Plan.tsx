@@ -217,7 +217,7 @@ export function Plan({ state }: { state?: 'add' }) {
               <TextButtons color="White" size="M" iconLeft="Yes" style={{ position: 'absolute', left: 16, top: 10, zIndex: 2 }} onClick={() => nav(`/map?route=${date}`)}>Открыть карту</TextButtons>
             </div>
           </div>}
-          {venueAt && <div style={{ padding: '0 var(--spacing-2xl)' }}><TextButtons fill="No" iconRight="Yes" onClick={() => setSheet(true)}>Все места рядом</TextButtons></div>}
+          {venueAt && <div style={{ padding: '0 var(--spacing-2xl) var(--spacing-4xl)' }}><TextButtons fill="No" iconRight="Yes" onClick={() => setSheet(true)}>Все места рядом</TextButtons></div>}
           {activities.length > 0 && <>
             <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-2xl) 0 var(--spacing-5xl)' }}>
               <TextButtons fill="No" iconLeft="Yes" iconLeftName="trash" danger onClick={() => { store.deletePlan(date); store.toast('Активности убраны из плана'); }}>Очистить план</TextButtons>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Icon, LocationCard, Map, MapHomePoint, MapMarker, MapPin, Tabs } from '../../components';
+import { ButtonTag, Icon, LocationCard, Map, MapHomePoint, MapMarker, MapPin, Tabs } from '../../components';
 import { photos } from '../../assets/photos';
-import { PLACE_GEO, type NearPlace } from '../../data/mock';
+import { PLACE_FILTERS, PLACE_GEO, type NearPlace } from '../../data/mock';
 import { dayPlan, type PlanItem } from '../../data/store';
 import { BottomSheet } from '../_shell/BottomSheet';
 
@@ -57,10 +57,10 @@ export function DaySlots({ items, eventTime, onSlot, onPlace, onEvent, fresh }: 
   return (
     <div id="plan-points" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3xl)' }}>
       {group('До начала', before.length ? <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>{places(before, 'before')}</div>
-        : <EmptySlot title="Кофе или перекус" text="Кафе в 5–10 минутах от площадки" onClick={() => onSlot('before')} />)}
+        : <EmptySlot title="Добавить место до начала" text={`Например, кофе или прогулка${eventTime ? ` — начало в ${eventTime}` : ''}`} onClick={() => onSlot('before')} />)}
       {group(`${eventTime} · событие`, <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>{events.map((p) => <div key={p.id} role="link" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => onEvent(p)}><LocationCard photo="No" order={1} name={p.name} time={p.time} category={p.category} /></div>)}</div>)}
       {group('После', after.length ? <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>{places(after, 'after')}</div>
-        : <EmptySlot title="Ужин или прогулка" text="Рестораны, бары и набережные рядом" onClick={() => onSlot('after')} />)}
+        : <EmptySlot title="Добавить место после" text="Например, ужин, бар или прогулка по набережной" onClick={() => onSlot('after')} />)}
     </div>
   );
 }
@@ -71,11 +71,15 @@ export function SlotSheet({ slot, eventTime, venue, candidates, favourites, inPl
   replacing?: string; onPick: (id: string) => void; onRemove?: () => void; onClose: () => void;
 }) {
   const [view, setView] = useState(0);
-  const list = candidates.filter((p) => slotOf(p.category) === slot && (!inPlan(p.id) || p.id === replacing));
+  // в слот можно поставить любое место — тип не навязываем; сузить — чипсами
+  const [cat, setCat] = useState('Все');
+  const all = candidates.filter((p) => !inPlan(p.id) || p.id === replacing);
+  const cats = ['Все', ...Object.keys(PLACE_FILTERS).filter((c) => c !== 'Все' && all.some(PLACE_FILTERS[c]))];
+  const list = all.filter(PLACE_FILTERS[cat] ?? (() => true));
   const fav = list.filter((p) => favourites.includes(`place:${p.id}`)), rest = list.filter((p) => !favourites.includes(`place:${p.id}`));
   const end = `${String((+eventTime.slice(0, 2) + 2) % 24).padStart(2, '0')}:${eventTime.slice(3, 5)}`;
   const title = slot === 'before' ? 'До начала' : 'После события';
-  const sub = slot === 'before' ? `Кофе или перекус — начало в ${eventTime}, успеете пешком` : `Ужин, бар или прогулка — событие закончится около ${end}`;
+  const sub = slot === 'before' ? `Начало в ${eventTime} — места в пешей доступности от площадки` : `Событие закончится около ${end} — места рядом с площадкой`;
   const card = (p: NearPlace, close: (after?: () => void) => void) => (
     <LocationCard key={p.id} button="Yes" remove={p.id === replacing} name={p.name} time={p.time} image={photos[p.image]} favourite={favourites.includes(`place:${p.id}`)}
       onAction={() => close(() => (p.id === replacing ? onRemove?.() : onPick(p.id)))} />
@@ -94,6 +98,9 @@ export function SlotSheet({ slot, eventTime, venue, candidates, favourites, inPl
         <span className="ds-body" style={{ color: 'var(--color-text-secondary)' }}>{sub}</span>
       </div>
       <Tabs tabs={['Список', 'На карте']} active={view} onChange={setView} />
+      <div style={{ display: 'flex', gap: 'var(--spacing-md)', margin: 'var(--spacing-xl) calc(-1 * var(--spacing-2xl)) 0', padding: '0 var(--spacing-2xl)', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
+        {cats.map((c) => <ButtonTag key={c} status={cat === c ? 'Active' : 'No active'} onClick={() => setCat(c)}>{c}</ButtonTag>)}
+      </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3xl)', padding: 'var(--spacing-2xl) 0 var(--spacing-5xl)' }}>
         {view === 0 ? (list.length ? <>
           {section('heart-rounded-fill', 'Из избранного', fav, close)}
