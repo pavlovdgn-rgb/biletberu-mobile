@@ -8,7 +8,7 @@ import { TODAY, dayPlan, ticketEvent, dayStats, itemGeo, placeKey, useStore } fr
 import { EmptyState, NavBar, useOpen } from '../_shell/app';
 import { Screen } from '../_shell/Screen';
 import { EditPlanSheet } from './EditPlanSheet';
-import { DaySlots, SLOT_LABEL, SlotSheet, planOrder, slotOf, splitDay, type Slot } from './DaySlots';
+import { DaySlots, PickMarker, SLOT_LABEL, SlotSheet, planOrder, slotOf, splitDay, type Slot } from './DaySlots';
 import { ROUTES, RoutesSheet } from './RoutesSheet';
 
 import { NO_PLACE_FILTER, PlaceFilterSheet, matchPlace, placeFilterActive, type PlaceFilter } from './PlaceFilterSheet';
@@ -217,9 +217,18 @@ export function Plan({ state }: { state?: 'add' }) {
               <TextButtons color="White" size="M" iconLeft="Yes" style={{ position: 'absolute', left: 16, top: 10, zIndex: 2 }} onClick={() => nav(`/map?route=${date}`)}>Открыть карту</TextButtons>
             </div>
           </div>}
-          {venueAt && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-md) var(--spacing-3xl)', padding: '0 var(--spacing-2xl) var(--spacing-4xl)' }}>
-            <TextButtons fill="No" iconLeft="Yes" iconLeftName="map" iconRight="No" onClick={() => nav(`/map?id=${eventId}&date=${date}`)}>Выбрать на карте</TextButtons>
-            <TextButtons fill="No" iconRight="Yes" onClick={() => setSheet(true)}>Все места рядом</TextButtons>
+          {/* план пуст — превью карты мест рядом: тап открывает полную карту выбора (метка → карточка места → «Добавить в план») */}
+          {venueAt && !activities.length && <div id="plan-near-map" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)', padding: 'var(--spacing-md) 0 var(--spacing-4xl)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', padding: '0 var(--spacing-2xl)' }}><Icon name="marker-pin" size={24} /><span className="ds-heading-h2">Места рядом · {candidates.length}</span></div>
+            <div role="link" tabIndex={0} aria-label="Выбрать на карте" onClick={() => nav(`/map?id=${eventId}&date=${date}`)} style={{ position: 'relative', height: 254, isolation: 'isolate', cursor: 'pointer' }}>
+              <div style={{ pointerEvents: 'none' }}>
+                <Map designation="No" metro="Yes" height={254} scale={480} center={venueAt}>
+                  <MapPin at={venueAt}><MapHomePoint radius="No" /></MapPin>
+                  {candidates.slice(0, 12).map((p) => PLACE_GEO[p.id] && <MapPin key={p.id} at={PLACE_GEO[p.id]}><PickMarker name={p.name} image={photos[p.image]} fav={isFav(p.id)} /></MapPin>)}
+                </Map>
+              </div>
+              <TextButtons color="White" size="M" iconLeft="Yes" iconLeftName="map" style={{ position: 'absolute', left: 16, top: 10, zIndex: 2 }}>Выбрать на карте</TextButtons>
+            </div>
           </div>}
           {activities.length > 0 && <>
             <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-2xl) 0 var(--spacing-5xl)' }}>
